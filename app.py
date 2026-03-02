@@ -262,6 +262,7 @@ st.markdown("""
 for _key, _default in [
     ("authenticated",     False),
     ("company_name",      None),
+    ("company_unique_id", None),
     ("company_id",        None),
     ("supervisor_name",   None),
     ("supervisor_email",  None),
