@@ -706,6 +706,19 @@ def show_projects():
         unsafe_allow_html=True
     )
 
+    # ── Temporary debug (preview mode only) ──
+    if st.session_state.get("is_preview"):
+        with st.expander("🛠 Debug Info (preview mode only)"):
+            st.write("**company_name used in lookup:**", repr(company_name))
+            try:
+                tables = get_tables()
+                sample = tables["projects"].all(max_records=5)
+                st.write("**Sample Unique Record IDs from projects table:**")
+                for r in sample:
+                    st.write(repr(r["fields"].get("Unique Record ID_Company Projects", "FIELD NOT FOUND")))
+            except Exception as e:
+                st.write("Error fetching sample:", e)
+
     if not projects:
         st.info("No projects assigned yet.")
         return
