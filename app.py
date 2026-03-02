@@ -377,27 +377,36 @@ def get_students_for_company(company_name):
     tables = get_tables()
     try:
         safe = company_name.replace("'", "\\'")
-        records = tables["students"].all(
-            formula=f"FIND('{safe}', {{Student ID}}) > 0"
+        formula = f"FIND('{safe}', {{Student ID}}) > 0"
+        # Raw fetch: keeps project_assigned as record IDs for project matching
+        records = tables["students"].all(formula=formula)
+        # String fetch: resolves linked field display names (e.g. Program Type)
+        records_str = tables["students"].all(
+            formula=formula,
+            cell_format="string",
+            user_locale="en-us",
+            time_zone="America/New_York",
         )
+        str_by_id = {r["id"]: r["fields"] for r in records_str}
         students = []
         for r in records:
-            f = r["fields"]
+            f     = r["fields"]
+            f_str = str_by_id.get(r["id"], {})
             students.append({
-                "id":               r["id"],
-                "student_id":       f.get(STUDENT_FIELDS["student_id"], ""),
-                "full_name":        f.get(STUDENT_FIELDS["full_name"], ""),
-                "preferred_name":   f.get(STUDENT_FIELDS["preferred_name"], ""),
-                "email":            f.get(STUDENT_FIELDS["email"], ""),
-                "program_type":     f.get(STUDENT_FIELDS["program_type"], ""),
-                "project_assigned": f.get(STUDENT_FIELDS["project_assigned"], ""),
-                "meetings_count":   f.get(STUDENT_FIELDS["meetings_count"], ""),
-                "weekly_notes":     f.get(STUDENT_FIELDS["weekly_notes"], ""),
-                "timezone":         f.get(STUDENT_FIELDS["timezone"], ""),
-                "grade":            f.get(STUDENT_FIELDS["grade"], ""),
-                "gpa":              f.get(STUDENT_FIELDS["gpa"], ""),
-                "interest_reason":  f.get(STUDENT_FIELDS["interest_reason"], ""),
-                "candidacy_reason": f.get(STUDENT_FIELDS["candidacy_reason"], ""),
+                "id":                   r["id"],
+                "student_id":           f.get(STUDENT_FIELDS["student_id"], ""),
+                "full_name":            f.get(STUDENT_FIELDS["full_name"], ""),
+                "preferred_name":       f.get(STUDENT_FIELDS["preferred_name"], ""),
+                "email":                f.get(STUDENT_FIELDS["email"], ""),
+                "program_type":         f_str.get(STUDENT_FIELDS["program_type"], ""),
+                "project_assigned":     f.get(STUDENT_FIELDS["project_assigned"], ""),
+                "meetings_count":       f.get(STUDENT_FIELDS["meetings_count"], ""),
+                "weekly_notes":         f.get(STUDENT_FIELDS["weekly_notes"], ""),
+                "timezone":             f.get(STUDENT_FIELDS["timezone"], ""),
+                "grade":                f.get(STUDENT_FIELDS["grade"], ""),
+                "gpa":                  f.get(STUDENT_FIELDS["gpa"], ""),
+                "interest_reason":      f.get(STUDENT_FIELDS["interest_reason"], ""),
+                "candidacy_reason":     f.get(STUDENT_FIELDS["candidacy_reason"], ""),
                 "resume_url":           f.get(STUDENT_FIELDS["resume_url"], ""),
                 "status_for_company":   f.get(STUDENT_FIELDS["status_for_company"], ""),
             })
