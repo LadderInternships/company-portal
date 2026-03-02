@@ -283,19 +283,26 @@ def get_company_by_email(email):
     try:
         safe = email.replace("'", "\\'")
         records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')",
-            cell_format="string",
-            user_locale="en-us",
-            time_zone="America/New_York",
+            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
         )
         if records:
             r = records[0]
             f = r["fields"]
+            # Second fetch with cell_format="string" to resolve linked field
+            # display names (e.g. Company Industry) without affecting the raw
+            # field values used for project/student lookup formulas.
+            r_display = tables["companies"].get(
+                r["id"],
+                cell_format="string",
+                user_locale="en-us",
+                time_zone="America/New_York",
+            )
+            f_display = r_display["fields"]
             return {
                 "id":                 r["id"],
                 "name":               f.get(COMPANY_FIELDS["name"], ""),
                 "unique_id":          f.get(COMPANY_FIELDS["unique_id"], ""),
-                "industry":           f.get(COMPANY_FIELDS["industry"], ""),
+                "industry":           f_display.get(COMPANY_FIELDS["industry"], ""),
                 "size":               f.get(COMPANY_FIELDS["size"], ""),
                 "supervisor_name":    f.get(COMPANY_FIELDS["supervisor_name"], ""),
                 "supervisor_email":   f.get(COMPANY_FIELDS["supervisor_email"], ""),
