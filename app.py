@@ -818,6 +818,8 @@ def show_intern_meetings(student):
 def show_intern_resume(student):
     st.markdown("### Resume")
     resume = student.get("resume_url", "")
+    if isinstance(resume, list):
+        resume = ", ".join(str(u) for u in resume if u)
     if resume:
         urls = [u.strip() for u in resume.split(",") if u.strip().startswith("http")]
         if urls:
