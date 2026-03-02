@@ -638,17 +638,6 @@ def show_company_overview():
         unsafe_allow_html=True
     )
 
-    # ── Summary metrics ──
-    total_interns = len(students)
-    meetings_total = sum(meetings_completed(p) for p in projects)
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        st.metric("Total Projects", len(projects))
-    with col_m2:
-        st.metric("Assigned Interns", total_interns)
-    with col_m3:
-        st.metric("Total Meetings Held", meetings_total)
-
     st.markdown("---")
 
     # ── Company profile ──
