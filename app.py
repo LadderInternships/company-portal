@@ -147,6 +147,7 @@ STUDENT_FIELDS = {
     "interest_reason":    "Student Response: Why are you interested in this industry?",
     "candidacy_reason":   "Student Response: Why are you a good candidate for our Internship program?",
     "resume_url":         "Resume (URL) (from Submissions Table)",
+    "status_for_company": "Status for company",
 }
 
 # ─────────────────────────────────────────────
@@ -397,7 +398,8 @@ def get_students_for_company(company_name):
                 "gpa":              f.get(STUDENT_FIELDS["gpa"], ""),
                 "interest_reason":  f.get(STUDENT_FIELDS["interest_reason"], ""),
                 "candidacy_reason": f.get(STUDENT_FIELDS["candidacy_reason"], ""),
-                "resume_url":       f.get(STUDENT_FIELDS["resume_url"], ""),
+                "resume_url":           f.get(STUDENT_FIELDS["resume_url"], ""),
+                "status_for_company":   f.get(STUDENT_FIELDS["status_for_company"], ""),
             })
         return students
     except Exception as e:
@@ -697,8 +699,24 @@ def extract_cohort_from_student_id(student_id):
 # ─────────────────────────────────────────────
 # YOUR PROJECTS VIEW
 # ─────────────────────────────────────────────
+def _status_badge(status):
+    s = (status or "").lower()
+    if "confirm" in s:
+        bg, color = "#dcfce7", "#166534"
+    elif "tentative" in s:
+        bg, color = "#fef3c7", "#92400e"
+    else:
+        bg, color = "#f3f4f6", "#374151"
+    label = status or "—"
+    return (
+        f'<span style="background:{bg};color:{color};padding:2px 10px;'
+        f'border-radius:12px;font-size:0.78rem;font-weight:600;">{label}</span>'
+    )
+
 def show_projects():
-    projects = get_projects_for_company(_get_company_unique_id())
+    uid = _get_company_unique_id()
+    projects = get_projects_for_company(uid)
+    students = get_students_for_company(uid)
 
     st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
     st.markdown(
@@ -769,6 +787,26 @@ def show_projects():
                     st.markdown(f"**Intern Timezones:** {project['timezones']}")
             if project["max_interns"]:
                 st.markdown(f"**Max Interns:** {project['max_interns']}")
+
+        # ── Assigned interns ──
+        project_interns = [
+            s for s in students
+            if isinstance(s["project_assigned"], list)
+            and project["id"] in s["project_assigned"]
+        ]
+        st.markdown("**Assigned Interns**")
+        if project_interns:
+            rows = "".join(
+                f'<div style="display:flex;align-items:center;justify-content:space-between;'
+                f'padding:7px 0;border-bottom:1px solid #f0f0f0;">'
+                f'<span style="font-size:0.9rem;">{s["full_name"]}</span>'
+                f'{_status_badge(s["status_for_company"])}'
+                f'</div>'
+                for s in project_interns
+            )
+            st.markdown(f'<div style="margin-top:4px;">{rows}</div>', unsafe_allow_html=True)
+        else:
+            st.caption("No interns assigned to this project yet.")
 
         st.markdown("---")
 
