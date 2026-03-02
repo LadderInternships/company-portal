@@ -283,7 +283,10 @@ def get_company_by_email(email):
     try:
         safe = email.replace("'", "\\'")
         records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
+            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')",
+            cell_format="string",
+            user_locale="en-us",
+            time_zone="America/New_York",
         )
         if records:
             r = records[0]
@@ -621,7 +624,7 @@ def show_company_overview():
     meetings_total = sum(meetings_completed(p) for p in projects)
     col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
-        st.metric("Active Projects", len(projects))
+        st.metric("Total Projects", len(projects))
     with col_m2:
         st.metric("Assigned Interns", total_interns)
     with col_m3:
