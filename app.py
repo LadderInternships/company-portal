@@ -616,9 +616,17 @@ def show_login_page():
 # ─────────────────────────────────────────────
 # COMPANY OVERVIEW
 # ─────────────────────────────────────────────
+def _get_company_unique_id():
+    """Return company_unique_id from session state, re-fetching if missing."""
+    if not st.session_state.company_unique_id:
+        company = get_company_by_email(st.session_state.supervisor_email)
+        if company:
+            st.session_state.company_unique_id = company["unique_id"]
+    return st.session_state.company_unique_id
+
 def show_company_overview():
-    company_name       = st.session_state.company_name
-    company_unique_id  = st.session_state.company_unique_id
+    company_name      = st.session_state.company_name
+    company_unique_id = _get_company_unique_id()
     company  = get_company_by_email(st.session_state.supervisor_email)
     projects = get_projects_for_company(company_unique_id)
     students = get_students_for_company(company_unique_id)
@@ -701,7 +709,7 @@ def extract_cohort_from_student_id(student_id):
 # YOUR PROJECTS VIEW
 # ─────────────────────────────────────────────
 def show_projects():
-    projects = get_projects_for_company(st.session_state.company_unique_id)
+    projects = get_projects_for_company(_get_company_unique_id())
 
     st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
     st.markdown(
@@ -848,7 +856,7 @@ def show_intern_resume(student):
 # YOUR INTERNS VIEW
 # ─────────────────────────────────────────────
 def show_interns():
-    students = get_students_for_company(st.session_state.company_unique_id)
+    students = get_students_for_company(_get_company_unique_id())
 
     st.markdown('<p class="main-header">Your Interns</p>', unsafe_allow_html=True)
     st.markdown(
