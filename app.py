@@ -491,12 +491,13 @@ def check_magic_link_token():
         if email:
             company = get_company_by_email(email)
             if company:
-                st.session_state.authenticated    = True
-                st.session_state.company_name     = company["name"]
-                st.session_state.company_id       = company["id"]
-                st.session_state.supervisor_name  = company["supervisor_name"]
-                st.session_state.supervisor_email = company["supervisor_email"]
-                st.session_state.is_preview       = False
+                st.session_state.authenticated      = True
+                st.session_state.company_name       = company["name"]
+                st.session_state.company_unique_id  = company["unique_id"]
+                st.session_state.company_id         = company["id"]
+                st.session_state.supervisor_name    = company["supervisor_name"]
+                st.session_state.supervisor_email   = company["supervisor_email"]
+                st.session_state.is_preview         = False
                 st.query_params.clear()
                 st.rerun()
         else:
@@ -589,11 +590,12 @@ def show_login_page():
                 if preview_submitted:
                     company = get_company_by_email(preview_email)
                     if company:
-                        st.session_state.authenticated    = True
-                        st.session_state.company_name     = company["name"]
-                        st.session_state.company_id       = company["id"]
-                        st.session_state.supervisor_name  = company["supervisor_name"]
-                        st.session_state.supervisor_email = company["supervisor_email"]
+                        st.session_state.authenticated      = True
+                        st.session_state.company_name       = company["name"]
+                        st.session_state.company_unique_id  = company["unique_id"]
+                        st.session_state.company_id         = company["id"]
+                        st.session_state.supervisor_name    = company["supervisor_name"]
+                        st.session_state.supervisor_email   = company["supervisor_email"]
                         st.session_state.is_preview       = True
                         st.rerun()
                     else:
@@ -614,10 +616,11 @@ def show_login_page():
 # COMPANY OVERVIEW
 # ─────────────────────────────────────────────
 def show_company_overview():
-    company_name = st.session_state.company_name
+    company_name       = st.session_state.company_name
+    company_unique_id  = st.session_state.company_unique_id
     company  = get_company_by_email(st.session_state.supervisor_email)
-    projects = get_projects_for_company(company_name)
-    students = get_students_for_company(company_name)
+    projects = get_projects_for_company(company_unique_id)
+    students = get_students_for_company(company_unique_id)
 
     st.markdown('<p class="main-header">Company Overview</p>', unsafe_allow_html=True)
     st.markdown(
@@ -697,27 +700,13 @@ def extract_cohort_from_student_id(student_id):
 # YOUR PROJECTS VIEW
 # ─────────────────────────────────────────────
 def show_projects():
-    company_name = st.session_state.company_name
-    projects     = get_projects_for_company(company_name)
+    projects = get_projects_for_company(st.session_state.company_unique_id)
 
     st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-header">View project details and track weekly meeting progress.</p>',
         unsafe_allow_html=True
     )
-
-    # ── Temporary debug (preview mode only) ──
-    if st.session_state.get("is_preview"):
-        with st.expander("🛠 Debug Info (preview mode only)"):
-            st.write("**company_name used in lookup:**", repr(company_name))
-            try:
-                tables = get_tables()
-                sample = tables["projects"].all(max_records=5)
-                st.write("**Sample Unique Record IDs from projects table:**")
-                for r in sample:
-                    st.write(repr(r["fields"].get("Unique Record ID_Company Projects", "FIELD NOT FOUND")))
-            except Exception as e:
-                st.write("Error fetching sample:", e)
 
     if not projects:
         st.info("No projects assigned yet.")
@@ -858,8 +847,7 @@ def show_intern_resume(student):
 # YOUR INTERNS VIEW
 # ─────────────────────────────────────────────
 def show_interns():
-    company_name = st.session_state.company_name
-    students     = get_students_for_company(company_name)
+    students = get_students_for_company(st.session_state.company_unique_id)
 
     st.markdown('<p class="main-header">Your Interns</p>', unsafe_allow_html=True)
     st.markdown(
@@ -1048,12 +1036,13 @@ def show_dashboard():
             st.rerun()
 
         if st.button("🚪 Logout"):
-            st.session_state.authenticated    = False
-            st.session_state.company_name     = None
-            st.session_state.company_id       = None
-            st.session_state.supervisor_name  = None
-            st.session_state.supervisor_email = None
-            st.session_state.is_preview       = False
+            st.session_state.authenticated      = False
+            st.session_state.company_name       = None
+            st.session_state.company_unique_id  = None
+            st.session_state.company_id         = None
+            st.session_state.supervisor_name    = None
+            st.session_state.supervisor_email   = None
+            st.session_state.is_preview         = False
             st.session_state.selected_intern_id = None
             st.rerun()
 
