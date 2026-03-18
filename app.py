@@ -696,6 +696,7 @@ def show_company_overview():
 
     st.markdown("---")
     st.info("Use **Your Projects** in the sidebar to view your project details and meeting progress.")
+    st.caption("To update any information on this page, please reach out to our Company Partnerships Manager, Linh, at [linh.nguyen@ladderinternships.com](mailto:linh.nguyen@ladderinternships.com).")
 
 def extract_cohort_from_student_id(student_id):
     """Extract cohort name from 'StudentName | CompanyName | CohortName' format."""
