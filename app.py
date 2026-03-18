@@ -271,6 +271,7 @@ for _key, _default in [
     ("magic_link_sent",   False),
     ("team_unlocked",     False),
     ("selected_intern_id", None),
+    ("selected_project_id", None),
 ]:
     if _key not in st.session_state:
         st.session_state[_key] = _default
@@ -727,54 +728,57 @@ def show_projects():
     projects = get_projects_for_company(uid)
     students = get_students_for_company(uid)
 
-    st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
-    st.markdown(
-        '<p class="sub-header">View project details and track weekly meeting progress.</p>',
-        unsafe_allow_html=True
-    )
-
     if not projects:
+        st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
         st.info("No projects assigned yet.")
         return
 
-    # ── Cohort filter ──
-    cohorts = sorted(set(p["cohort"] for p in projects if p["cohort"]))
-    if len(cohorts) > 1:
-        cohort_options = ["All Cohorts"] + cohorts
-        selected_cohort = st.selectbox("Filter by cohort", cohort_options, key="project_cohort_filter")
-        if selected_cohort != "All Cohorts":
-            projects = [p for p in projects if p["cohort"] == selected_cohort]
-    elif cohorts:
-        st.caption(f"Cohort: {cohorts[0]}")
+    # ── Intern profile view (drilled in from a project) ──
+    if st.session_state.selected_project_id and st.session_state.selected_intern_id:
+        project = next((p for p in projects if p["id"] == st.session_state.selected_project_id), None)
+        intern  = next((s for s in students if s["id"] == st.session_state.selected_intern_id), None)
+        if project and intern:
+            if st.button(f"← Back to {project['name']}"):
+                st.session_state.selected_intern_id = None
+                st.rerun()
+            preferred = intern["preferred_name"]
+            st.markdown(f"## {intern['full_name']}")
+            if preferred and preferred != intern["full_name"]:
+                st.caption(f"Goes by: {preferred}")
+            st.markdown("---")
+            tab1, tab2, tab3 = st.tabs(["🎓 Background", "📋 Meeting Activity", "📄 Resume"])
+            with tab1:
+                show_intern_background(intern)
+            with tab2:
+                show_intern_meetings(intern)
+            with tab3:
+                show_intern_resume(intern)
+            return
 
-    st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
-    st.markdown("---")
+    # ── Project detail view ──
+    if st.session_state.selected_project_id:
+        project = next((p for p in projects if p["id"] == st.session_state.selected_project_id), None)
+        if project:
+            if st.button("← Back to Projects"):
+                st.session_state.selected_project_id = None
+                st.session_state.selected_intern_id  = None
+                st.rerun()
 
-    for project in projects:
-        completed = meetings_completed(project)
-        week_html = render_week_tracker(project)
-        category  = project["category"] or "—"
-        cohort    = project["cohort"] or "—"
-        n_interns = project["confirmed_signups"]
+            st.markdown(f'<p class="main-header">{project["name"]}</p>', unsafe_allow_html=True)
+            category = project["category"] or "—"
+            cohort   = project["cohort"]   or "—"
+            st.caption(f"Category: {category}  |  Cohort: {cohort}")
 
-        st.markdown(
-            f'<div class="project-card">'
-            f'<h4 style="margin:0 0 0.4rem 0;">{project["name"]}</h4>'
-            f'<p style="color:#4A5568;margin:0 0 0.75rem 0;font-size:0.88rem;">'
-            f'Category: {category}&nbsp;&nbsp;|&nbsp;&nbsp;Cohort: {cohort}'
-            f'&nbsp;&nbsp;|&nbsp;&nbsp;Interns: {n_interns}'
-            f'</p>'
-            f'<p style="margin:0 0 0.4rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
-            f'Meeting Progress — {completed}/8 weeks completed</p>'
-            f'{week_html}'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+            completed = meetings_completed(project)
+            week_html = render_week_tracker(project)
+            st.markdown(
+                f'<p style="margin:0.75rem 0 0.3rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
+                f'Meeting Progress — {completed}/8 weeks completed</p>'
+                f'{week_html}',
+                unsafe_allow_html=True,
+            )
+            st.markdown("---")
 
-        if project.get("wde_link"):
-            st.markdown(f"[📄 View Work Description & Evaluation]({project['wde_link']})")
-
-        with st.expander("View full project details"):
             c1, c2 = st.columns(2)
             with c1:
                 if project["description"]:
@@ -794,29 +798,76 @@ def show_projects():
             with cd2:
                 if project["timezones"]:
                     st.markdown(f"**Intern Timezones:** {project['timezones']}")
-            if project["max_interns"]:
-                st.markdown(f"**Max Interns:** {project['max_interns']}")
+            if project.get("wde_link"):
+                st.markdown(f"[📄 View Work Description & Evaluation]({project['wde_link']})")
 
-        # ── Assigned interns ──
-        project_interns = [
-            s for s in students
-            if isinstance(s["project_assigned"], list)
-            and project["id"] in s["project_assigned"]
-        ]
-        st.markdown("**Assigned Interns**")
-        if project_interns:
-            rows = "".join(
-                f'<div style="display:flex;align-items:center;justify-content:space-between;'
-                f'padding:7px 0;border-bottom:1px solid #f0f0f0;">'
-                f'<span style="font-size:0.9rem;">{s["full_name"]}</span>'
-                f'{_status_badge(s["status_for_company"])}'
-                f'</div>'
-                for s in project_interns
-            )
-            st.markdown(f'<div style="margin-top:4px;">{rows}</div>', unsafe_allow_html=True)
-        else:
-            st.caption("No interns assigned to this project yet.")
+            st.markdown("---")
+            st.markdown("### Assigned Interns")
+            project_interns = [
+                s for s in students
+                if isinstance(s["project_assigned"], list)
+                and project["id"] in s["project_assigned"]
+            ]
+            if project_interns:
+                for s in project_interns:
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        if st.button(s["full_name"], key=f"proj_intern_{s['id']}"):
+                            st.session_state.selected_intern_id = s["id"]
+                            st.rerun()
+                    with col2:
+                        st.markdown(_status_badge(s["status_for_company"]), unsafe_allow_html=True)
+                    with col3:
+                        meetings = parse_meetings_count(s.get("meetings_count", 0))
+                        st.caption(f"📅 {meetings} meeting{'s' if meetings != 1 else ''}")
+                    st.markdown("---")
+            else:
+                st.info("No interns assigned to this project yet.")
+            return
 
+    # ── Project list ──
+    st.markdown('<p class="main-header">Your Projects</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="sub-header">Click into a project to view details and assigned interns.</p>',
+        unsafe_allow_html=True
+    )
+
+    cohorts = sorted(set(p["cohort"] for p in projects if p["cohort"]))
+    if len(cohorts) > 1:
+        cohort_options = ["All Cohorts"] + cohorts
+        selected_cohort = st.selectbox("Filter by cohort", cohort_options, key="project_cohort_filter")
+        if selected_cohort != "All Cohorts":
+            projects = [p for p in projects if p["cohort"] == selected_cohort]
+    elif cohorts:
+        st.caption(f"Cohort: {cohorts[0]}")
+
+    st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
+    st.markdown("---")
+
+    for project in projects:
+        completed = meetings_completed(project)
+        week_html = render_week_tracker(project)
+        category  = project["category"] or "—"
+        cohort    = project["cohort"]   or "—"
+        n_interns = project["confirmed_signups"]
+
+        st.markdown(
+            f'<div class="project-card">'
+            f'<h4 style="margin:0 0 0.4rem 0;">{project["name"]}</h4>'
+            f'<p style="color:#4A5568;margin:0 0 0.75rem 0;font-size:0.88rem;">'
+            f'Category: {category}&nbsp;&nbsp;|&nbsp;&nbsp;Cohort: {cohort}'
+            f'&nbsp;&nbsp;|&nbsp;&nbsp;Interns: {n_interns}'
+            f'</p>'
+            f'<p style="margin:0 0 0.4rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
+            f'Meeting Progress — {completed}/8 weeks completed</p>'
+            f'{week_html}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("View Project →", key=f"open_project_{project['id']}"):
+            st.session_state.selected_project_id = project["id"]
+            st.session_state.selected_intern_id  = None
+            st.rerun()
         st.markdown("---")
 
 # ─────────────────────────────────────────────
@@ -1018,11 +1069,6 @@ def show_resources():
             "url":         "",
         },
         {
-            "title":       "Ladder Program Overview",
-            "description": "An overview of the 8-week internship structure, milestones, and what interns are expected to deliver.",
-            "url":         "",
-        },
-        {
             "title":       "Contact Your Program Manager",
             "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",
             "url":         "",
@@ -1087,8 +1133,9 @@ def show_dashboard():
             st.session_state.company_id         = None
             st.session_state.supervisor_name    = None
             st.session_state.supervisor_email   = None
-            st.session_state.is_preview         = False
-            st.session_state.selected_intern_id = None
+            st.session_state.is_preview          = False
+            st.session_state.selected_intern_id  = None
+            st.session_state.selected_project_id = None
             st.rerun()
 
     if st.session_state.is_preview:
