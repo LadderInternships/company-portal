@@ -934,8 +934,6 @@ def show_projects():
     st.markdown("---")
 
     for project in projects:
-        completed = meetings_completed(project)
-        week_html = render_week_tracker(project)
         category  = project["category"] or "—"
         cohort    = project["cohort"]   or "—"
         n_interns = project["confirmed_signups"]
@@ -964,13 +962,10 @@ def show_projects():
         st.markdown(
             f'<div class="project-card">'
             f'<h4 style="margin:0 0 0.4rem 0;">{project["name"]}</h4>'
-            f'<p style="color:#4A5568;margin:0 0 0.75rem 0;font-size:0.88rem;">'
+            f'<p style="color:#4A5568;margin:0 0 0.4rem 0;font-size:0.88rem;">'
             f'Category: {category}&nbsp;&nbsp;|&nbsp;&nbsp;Cohort: {cohort}'
             f'&nbsp;&nbsp;|&nbsp;&nbsp;Interns: {n_interns}'
             f'</p>'
-            f'<p style="margin:0 0 0.4rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
-            f'Meeting Progress — {completed}/8 weeks completed</p>'
-            f'{week_html}'
             f'{wde_section}'
             f'{pm_html}'
             f'</div>',
