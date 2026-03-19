@@ -150,7 +150,7 @@ PAYMENT_FIELDS = {
     "hard_wl":            "# Hard WL students",
     "nfa_excl_hwl":       "# of NFA students (excluding HWL)",
     "amount_required":    "Company Payment Amount Required (after Summer 2025)",
-    "paid_amount":        "Company Paid Amount",
+    "paid_amount":        "FN: Company Paid Amount",
     "payment_status":     "FN: Company Payment Status",
 }
 
