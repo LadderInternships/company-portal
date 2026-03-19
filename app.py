@@ -139,7 +139,7 @@ PAYMENT_FIELDS = {
     "cohort_start_date":  "Cohort Start Date (from Cohort)",
     "company_projects":   "Company Projects",
     "nfa_ptl_led":        "# of NFA students (PTL-led)",
-    "nfa_company_led":    "# of NFA students (Company-led)",
+    "nfa_company_led":    "# of NFA students ( Company-led )",
     "nfa_unlinked":       "# of NFA students (unlinked, but compensate)",
     "hard_wl":            "# Hard WL students",
     "nfa_excl_hwl":       "# of NFA students (excluding HWL)",
@@ -1220,19 +1220,10 @@ def show_payments():
         if matched_projects:
             st.markdown('<p class="info-label">Projects</p>', unsafe_allow_html=True)
             for proj in matched_projects:
-                proj_col, btn_col = st.columns([6, 1])
-                with proj_col:
-                    st.markdown(
-                        f'<div style="background:#F8F9FA; border:1px solid #E5E7EB; border-radius:8px; '
-                        f'padding:0.55rem 1rem; margin-bottom:0.4rem; font-size:0.95rem;">'
-                        f'📁 {proj["name"]}</div>',
-                        unsafe_allow_html=True,
-                    )
-                with btn_col:
-                    if st.button("View →", key=f"proj_link_{p['id']}_{proj['id']}"):
-                        st.session_state.selected_project_id = proj["id"]
-                        st.session_state["nav_radio"] = "📁 Your Projects"
-                        st.rerun()
+                if st.button(f"📁 {proj['name']}", key=f"proj_link_{p['id']}_{proj['id']}"):
+                    st.session_state.selected_project_id = proj["id"]
+                    st.session_state["nav_radio"] = "📁 Your Projects"
+                    st.rerun()
 
         # ── Student counts ───────────────────────────────────────────
         st.markdown('<p class="info-label">Student Breakdown</p>', unsafe_allow_html=True)
