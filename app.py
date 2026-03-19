@@ -128,6 +128,7 @@ PROJECT_FIELDS = {
     "program_type":       "Program Type",
     "pm_name":            "Program Manager",
     "pm_email":           "Program Manager Email",
+    "kickoff_doodle":     "Kick off call doodle poll URL",
     "total_meetings":     "How many meetings have you had? Rollup (from Notes/Feedback (Company, Student, LC))",
     "week_1":             "Week 1 - Meeting Occurred",
     "week_2":             "Week 2 - Meeting Occurred",
@@ -171,6 +172,7 @@ STUDENT_FIELDS = {
     "resume_url":         "Resume (URL) (from Submissions Table)",
     "status_for_company": "Status for company",
     "whitelabel":         "Whitelabel/co-branded? (from Program Type)",
+    "programming_skills": "Please describe in detail your specific skill level for different programming languages",
 }
 
 # ─────────────────────────────────────────────
@@ -393,6 +395,7 @@ def get_projects_for_company(company_name):
                 "program_type":     f.get(PROJECT_FIELDS["program_type"], ""),
                 "pm_name":          f.get(PROJECT_FIELDS["pm_name"], ""),
                 "pm_email":         f.get(PROJECT_FIELDS["pm_email"], ""),
+                "kickoff_doodle":   f.get(PROJECT_FIELDS["kickoff_doodle"], ""),
                 "total_meetings":   f.get(PROJECT_FIELDS["total_meetings"], "0") or "0",
                 **week_data,
             })
@@ -440,6 +443,7 @@ def get_students_for_company(company_name):
                 "resume_url":           f.get(STUDENT_FIELDS["resume_url"], ""),
                 "status_for_company":   f.get(STUDENT_FIELDS["status_for_company"], ""),
                 "whitelabel":           f_str.get(STUDENT_FIELDS["whitelabel"], ""),
+                "programming_skills":   f.get(STUDENT_FIELDS["programming_skills"], ""),
             })
         return students
     except Exception as e:
@@ -835,13 +839,11 @@ def show_projects():
             if preferred and preferred != intern["full_name"]:
                 st.caption(f"Goes by: {preferred}")
             st.markdown("---")
-            tab1, tab2, tab3 = st.tabs(["🎓 Background", "📋 Meeting Activity", "📄 Resume"])
+            tab1, tab2 = st.tabs(["🎓 Background", "📋 Meeting Activity"])
             with tab1:
                 show_intern_background(intern)
             with tab2:
                 show_intern_meetings(intern)
-            with tab3:
-                show_intern_resume(intern)
             return
 
     # ── Project detail view ──
@@ -864,14 +866,32 @@ def show_projects():
                     "Please avoid mentioning Ladder in any communication with these students."
                 )
 
+            # ── Program manager ──────────────────────────────────────
+            pm_name  = project.get("pm_name", "")
+            pm_email = project.get("pm_email", "")
+            if pm_name or pm_email:
+                pm_str = pm_name
+                if pm_email:
+                    pm_str += f" · [{pm_email}](mailto:{pm_email})"
+                st.caption(f"Program Manager: {pm_str}")
+
+            # ── Meeting progress ─────────────────────────────────────
             completed = meetings_completed(project)
-            week_html = render_week_tracker(project)
             st.markdown(
-                f'<p style="margin:0.75rem 0 0.3rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
-                f'Meeting Progress — {completed}/8 weeks completed</p>'
-                f'{week_html}',
+                f'<p style="margin:1rem 0 0.5rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
+                f'Meeting Progress — {completed} of 8 weeks completed</p>',
                 unsafe_allow_html=True,
             )
+            cols = st.columns(8)
+            for i, col in enumerate(cols, start=1):
+                done = project.get(f"week_{i}", False)
+                col.markdown(
+                    f'<div style="text-align:center;padding:0.4rem 0;border-radius:8px;'
+                    f'background:{"#1B2B5E" if done else "#F0F2F6"};'
+                    f'color:{"#fff" if done else "#999"};font-size:0.78rem;font-weight:600;">'
+                    f'W{i}<br>{"✓" if done else "·"}</div>',
+                    unsafe_allow_html=True,
+                )
             st.markdown("---")
 
             c1, c2 = st.columns(2)
@@ -893,8 +913,13 @@ def show_projects():
             with cd2:
                 if project["timezones"]:
                     st.markdown(f"**Intern Timezones:** {project['timezones']}")
-            if project.get("wde_link"):
-                st.markdown(f"[📄 View Work Description & Evaluation]({project['wde_link']})")
+            link_col1, link_col2 = st.columns(2)
+            with link_col1:
+                if project.get("wde_link"):
+                    st.markdown(f"[📄 View Work Description & Evaluation]({project['wde_link']})")
+            with link_col2:
+                if project.get("kickoff_doodle"):
+                    st.markdown(f"[📅 Kick-off Call Doodle Poll]({project['kickoff_doodle']})")
 
             st.markdown("---")
             st.markdown("### Assigned Interns")
@@ -1002,6 +1027,10 @@ def show_intern_background(student):
         st.markdown("**Email**")
         st.markdown(student["email"] or "Not specified")
 
+    if student.get("programming_skills"):
+        st.markdown("**Programming Skills**")
+        st.markdown(student["programming_skills"])
+
     st.markdown("---")
     with st.expander("💡 Why are they interested in this industry?", expanded=True):
         st.markdown(student["interest_reason"] or "Not provided.")
@@ -1092,17 +1121,14 @@ def show_interns():
                 )
 
             st.markdown("---")
-            tab1, tab2, tab3 = st.tabs([
+            tab1, tab2 = st.tabs([
                 "🎓 Background",
                 "📋 Meeting Activity",
-                "📄 Resume",
             ])
             with tab1:
                 show_intern_background(selected)
             with tab2:
                 show_intern_meetings(selected)
-            with tab3:
-                show_intern_resume(selected)
             return
 
     # ── Intern list ──
@@ -1178,13 +1204,38 @@ def show_resources():
 
     resources = [
         {
-            "title":       "Ladder Supervisor Guide",
-            "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.",
+            "title":       "Project Builder Form",
+            "description": "Set up and submit your intern project details for the upcoming cohort.",
+            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7",
+        },
+        {
+            "title":       "First Week Meeting Availability Form",
+            "description": "Share your availability so we can schedule the kick-off meeting with your intern.",
+            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
+        },
+        {
+            "title":       "Weekly Update Form",
+            "description": "Submit your notes and intern progress after each weekly meeting. This keeps the Ladder team informed.",
+            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrn5BpbGVIB5rGxN",
+        },
+        {
+            "title":       "Midterm Feedback Form",
+            "description": "Share your midterm feedback on your intern's performance and progress halfway through the program.",
+            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
+        },
+        {
+            "title":       "End of Cohort Review Form",
+            "description": "Submit your final review and evaluation of your intern at the end of the program.",
+            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
+        },
+        {
+            "title":       "Referral Form",
+            "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",
             "url":         "",
         },
         {
-            "title":       "Weekly Meeting Update Form",
-            "description": "Submit your notes and intern progress after each weekly meeting. This keeps the Ladder team informed.",
+            "title":       "Ladder Supervisor Guide",
+            "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.",
             "url":         "",
         },
         {
