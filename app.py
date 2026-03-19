@@ -135,6 +135,7 @@ PROJECT_FIELDS = {
 
 PAYMENT_FIELDS = {
     "company":            "Company",
+    "cohort_identifier":  "Company\\PTL-Cohort",
     "cohort_start_date":  "Cohort Start Date (from Cohort)",
     "company_projects":   "Company Projects",
     "nfa_ptl_led":        "# of NFA students (PTL-led)",
@@ -142,8 +143,9 @@ PAYMENT_FIELDS = {
     "nfa_unlinked":       "# of NFA students (unlinked, but compensate)",
     "hard_wl":            "# Hard WL students",
     "nfa_excl_hwl":       "# of NFA students (excluding HWL)",
-    "baseline_calc":      "Company Payment_Baseline Calculation (after Summer 2025)",
     "amount_required":    "Company Payment Amount Required (after Summer 2025)",
+    "paid_amount":        "Company Paid Amount",
+    "payment_status":     "Company Payment Status",
 }
 
 STUDENT_FIELDS = {
@@ -455,17 +457,19 @@ def get_payments_for_company(company_name):
                     return None
 
             payments.append({
-                "id":               r["id"],
-                "company":          f.get(PAYMENT_FIELDS["company"], ""),
-                "cohort_start_date":f.get(PAYMENT_FIELDS["cohort_start_date"], ""),
-                "company_projects": f.get(PAYMENT_FIELDS["company_projects"], ""),
-                "nfa_ptl_led":      _num("nfa_ptl_led"),
-                "nfa_company_led":  _num("nfa_company_led"),
-                "nfa_unlinked":     _num("nfa_unlinked"),
-                "hard_wl":          _num("hard_wl"),
-                "nfa_excl_hwl":     _num("nfa_excl_hwl"),
-                "baseline_calc":    _num("baseline_calc"),
-                "amount_required":  _num("amount_required"),
+                "id":                r["id"],
+                "company":           f.get(PAYMENT_FIELDS["company"], ""),
+                "cohort_identifier": f.get(PAYMENT_FIELDS["cohort_identifier"], ""),
+                "cohort_start_date": f.get(PAYMENT_FIELDS["cohort_start_date"], ""),
+                "company_projects":  f.get(PAYMENT_FIELDS["company_projects"], ""),
+                "nfa_ptl_led":       _num("nfa_ptl_led"),
+                "nfa_company_led":   _num("nfa_company_led"),
+                "nfa_unlinked":      _num("nfa_unlinked"),
+                "hard_wl":           _num("hard_wl"),
+                "nfa_excl_hwl":      _num("nfa_excl_hwl"),
+                "amount_required":   _num("amount_required"),
+                "paid_amount":       _num("paid_amount"),
+                "payment_status":    f.get(PAYMENT_FIELDS["payment_status"], ""),
             })
         # Sort by cohort start date descending (most recent first)
         payments.sort(key=lambda p: p["cohort_start_date"] or "", reverse=True)
@@ -1170,66 +1174,74 @@ def show_payments():
         st.info("No payment records found for your company.")
         return
 
+    def _int_display(val):
+        return int(val) if val is not None else "—"
+
+    def _currency(val):
+        if val is None:
+            return "—"
+        return f"${val:,.0f}"
+
     for p in payments:
-        cohort_label = p["cohort_start_date"] or "Unknown Cohort"
+        cohort_label = p["cohort_identifier"] or p["cohort_start_date"] or "Unknown Cohort"
         projects_label = p["company_projects"] or ""
+        status = p["payment_status"] or ""
 
-        with st.expander(f"📅 Cohort starting {cohort_label}", expanded=True):
-            if projects_label:
-                st.markdown(f"**Project(s):** {projects_label}")
+        st.markdown(f"### {cohort_label}")
 
-            st.markdown("---")
+        if projects_label:
+            st.markdown(f"**Project(s):** {projects_label}")
 
-            # ── Student counts ──────────────────────────────────────────
-            st.markdown("**Student Breakdown**")
-            c1, c2, c3, c4, c5 = st.columns(5)
-            def _int_display(val):
-                return int(val) if val is not None else "—"
+        # ── Student counts ───────────────────────────────────────────
+        st.markdown("**Student Breakdown**")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c1:
+            st.metric("PTL-led (NFA)", _int_display(p["nfa_ptl_led"]))
+        with c2:
+            st.metric("Company-led (NFA)", _int_display(p["nfa_company_led"]))
+        with c3:
+            st.metric("Unlinked (compensate)", _int_display(p["nfa_unlinked"]))
+        with c4:
+            st.metric("Hard Waitlist", _int_display(p["hard_wl"]))
+        with c5:
+            st.metric("NFA (excl. HWL)", _int_display(p["nfa_excl_hwl"]))
 
-            with c1:
-                st.metric("PTL-led (NFA)", _int_display(p["nfa_ptl_led"]))
-            with c2:
-                st.metric("Company-led (NFA)", _int_display(p["nfa_company_led"]))
-            with c3:
-                st.metric("Unlinked (compensate)", _int_display(p["nfa_unlinked"]))
-            with c4:
-                st.metric("Hard Waitlist", _int_display(p["hard_wl"]))
-            with c5:
-                st.metric("NFA (excl. HWL)", _int_display(p["nfa_excl_hwl"]))
+        # ── Payment summary ──────────────────────────────────────────
+        st.markdown("**Payment Summary**")
+        pc1, pc2, pc3 = st.columns(3)
+        with pc1:
+            st.markdown(
+                f'<div style="background:#EDF7ED; border-radius:10px; padding:1.1rem 1.4rem;">'
+                f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
+                f'letter-spacing:0.05em;">Amount Required</p>'
+                f'<p style="margin:0.3rem 0 0; font-size:1.6rem; font-weight:700; color:#1A6B2F;">'
+                f'{_currency(p["amount_required"])}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with pc2:
+            st.markdown(
+                f'<div style="background:#F0F4FF; border-radius:10px; padding:1.1rem 1.4rem;">'
+                f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
+                f'letter-spacing:0.05em;">Amount Paid</p>'
+                f'<p style="margin:0.3rem 0 0; font-size:1.6rem; font-weight:700; color:#1B2B5E;">'
+                f'{_currency(p["paid_amount"])}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with pc3:
+            st.markdown(
+                f'<div style="background:#FAFAFA; border:1px solid #E5E7EB; border-radius:10px; padding:1.1rem 1.4rem;">'
+                f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
+                f'letter-spacing:0.05em;">Payment Status</p>'
+                f'<p style="margin:0.3rem 0 0; font-size:1.2rem; font-weight:700; color:#333;">'
+                f'{status if status else "—"}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-            st.markdown("---")
+        st.markdown("---")
 
-            # ── Payment amounts ─────────────────────────────────────────
-            st.markdown("**Payment Summary**")
-            pc1, pc2 = st.columns(2)
-
-            def _currency(val):
-                if val is None:
-                    return "—"
-                return f"${val:,.0f}"
-
-            with pc1:
-                st.markdown(
-                    f'<div style="background:#F0F4FF; border-radius:10px; padding:1.1rem 1.4rem;">'
-                    f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
-                    f'letter-spacing:0.05em;">Baseline Calculation</p>'
-                    f'<p style="margin:0.3rem 0 0; font-size:1.6rem; font-weight:700; color:#1B2B5E;">'
-                    f'{_currency(p["baseline_calc"])}</p>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-            with pc2:
-                st.markdown(
-                    f'<div style="background:#EDF7ED; border-radius:10px; padding:1.1rem 1.4rem;">'
-                    f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
-                    f'letter-spacing:0.05em;">Amount Required</p>'
-                    f'<p style="margin:0.3rem 0 0; font-size:1.6rem; font-weight:700; color:#1A6B2F;">'
-                    f'{_currency(p["amount_required"])}</p>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-
-    st.markdown("---")
     st.caption(
         "Payment amounts are calculated after Summer 2025. "
         "For questions about your compensation, contact "
