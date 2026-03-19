@@ -438,15 +438,22 @@ def get_payments_for_company(company_name):
     tables = get_tables()
     try:
         safe = company_name.replace("'", "\\'")
-        records = tables["payments"].all(
-            formula=f"FIND('{safe}', ARRAYJOIN({{Company}})) > 0",
+        formula = f"FIND('{safe}', ARRAYJOIN({{Company}})) > 0"
+        # Raw fetch: preserves linked record IDs (e.g. project record IDs)
+        records_raw = tables["payments"].all(formula=formula)
+        # String fetch: resolves display names for linked/lookup fields
+        records_str = tables["payments"].all(
+            formula=formula,
             cell_format="string",
             user_locale="en-us",
             time_zone="America/New_York",
         )
+        str_by_id = {r["id"]: r["fields"] for r in records_str}
         payments = []
-        for r in records:
-            f = r["fields"]
+        for r in records_raw:
+            f_raw = r["fields"]
+            f = str_by_id.get(r["id"], {})
+
             def _num(key):
                 val = f.get(PAYMENT_FIELDS[key], None)
                 if val is None or val == "":
@@ -456,12 +463,17 @@ def get_payments_for_company(company_name):
                 except (ValueError, TypeError):
                     return None
 
+            # Company Projects is a linked field — raw gives list of record IDs
+            raw_projects = f_raw.get(PAYMENT_FIELDS["company_projects"], [])
+            project_ids = raw_projects if isinstance(raw_projects, list) else []
+
             payments.append({
                 "id":                r["id"],
                 "company":           f.get(PAYMENT_FIELDS["company"], ""),
                 "cohort_identifier": f.get(PAYMENT_FIELDS["cohort_identifier"], ""),
                 "cohort_start_date": f.get(PAYMENT_FIELDS["cohort_start_date"], ""),
                 "company_projects":  f.get(PAYMENT_FIELDS["company_projects"], ""),
+                "project_ids":       project_ids,
                 "nfa_ptl_led":       _num("nfa_ptl_led"),
                 "nfa_company_led":   _num("nfa_company_led"),
                 "nfa_unlinked":      _num("nfa_unlinked"),
@@ -1174,6 +1186,10 @@ def show_payments():
         st.info("No payment records found for your company.")
         return
 
+    # Build project lookup: record ID → project dict
+    all_projects = get_projects_for_company(st.session_state.company_name)
+    project_by_id = {proj["id"]: proj for proj in all_projects}
+
     def _int_display(val):
         return int(val) if val is not None else "—"
 
@@ -1182,18 +1198,44 @@ def show_payments():
             return "—"
         return f"${val:,.0f}"
 
+    # ── Cohort filter ────────────────────────────────────────────────
+    cohort_options = [p["cohort_identifier"] or p["cohort_start_date"] or "Unknown" for p in payments]
+    selected_cohort = st.selectbox(
+        "Filter by cohort",
+        options=["All cohorts"] + cohort_options,
+        index=0,
+    )
+
     for p in payments:
         cohort_label = p["cohort_identifier"] or p["cohort_start_date"] or "Unknown Cohort"
-        projects_label = p["company_projects"] or ""
+        if selected_cohort != "All cohorts" and cohort_label != selected_cohort:
+            continue
+
         status = p["payment_status"] or ""
 
         st.markdown(f"### {cohort_label}")
 
-        if projects_label:
-            st.markdown(f"**Project(s):** {projects_label}")
+        # ── Projects ─────────────────────────────────────────────────
+        matched_projects = [project_by_id[pid] for pid in p["project_ids"] if pid in project_by_id]
+        if matched_projects:
+            st.markdown('<p class="info-label">Projects</p>', unsafe_allow_html=True)
+            for proj in matched_projects:
+                proj_col, btn_col = st.columns([6, 1])
+                with proj_col:
+                    st.markdown(
+                        f'<div style="background:#F8F9FA; border:1px solid #E5E7EB; border-radius:8px; '
+                        f'padding:0.55rem 1rem; margin-bottom:0.4rem; font-size:0.95rem;">'
+                        f'📁 {proj["name"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                with btn_col:
+                    if st.button("View →", key=f"proj_link_{p['id']}_{proj['id']}"):
+                        st.session_state.selected_project_id = proj["id"]
+                        st.session_state["nav_radio"] = "📁 Your Projects"
+                        st.rerun()
 
         # ── Student counts ───────────────────────────────────────────
-        st.markdown("**Student Breakdown**")
+        st.markdown('<p class="info-label">Student Breakdown</p>', unsafe_allow_html=True)
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
             st.metric("PTL-led (NFA)", _int_display(p["nfa_ptl_led"]))
@@ -1207,13 +1249,13 @@ def show_payments():
             st.metric("NFA (excl. HWL)", _int_display(p["nfa_excl_hwl"]))
 
         # ── Payment summary ──────────────────────────────────────────
-        st.markdown("**Payment Summary**")
+        st.markdown('<p class="info-label">Payment Summary</p>', unsafe_allow_html=True)
         pc1, pc2, pc3 = st.columns(3)
         with pc1:
             st.markdown(
                 f'<div style="background:#EDF7ED; border-radius:10px; padding:1.1rem 1.4rem;">'
                 f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
-                f'letter-spacing:0.05em;">Amount Required</p>'
+                f'letter-spacing:0.05em;">Amount Due</p>'
                 f'<p style="margin:0.3rem 0 0; font-size:1.6rem; font-weight:700; color:#1A6B2F;">'
                 f'{_currency(p["amount_required"])}</p>'
                 f'</div>',
@@ -1271,7 +1313,8 @@ def show_dashboard():
         view = st.radio(
             "Navigation",
             ["🏢 Company Overview", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Resources"],
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="nav_radio",
         )
 
         st.markdown("---")
