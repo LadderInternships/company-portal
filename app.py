@@ -122,6 +122,7 @@ PROJECT_FIELDS = {
     "meeting_day":        "Day for Weekly meeting",
     "final_output":       "Final Output of the project",
     "cohort":             "Which cohort for this project",
+    "program_type":       "Program Type",
     "total_meetings":     "How many meetings have you had? Rollup (from Notes/Feedback (Company, Student, LC))",
     "week_1":             "Week 1 - Meeting Occurred",
     "week_2":             "Week 2 - Meeting Occurred",
@@ -380,6 +381,7 @@ def get_projects_for_company(company_name):
                 "meeting_day":      f.get(PROJECT_FIELDS["meeting_day"], ""),
                 "final_output":     f.get(PROJECT_FIELDS["final_output"], ""),
                 "cohort":           f.get(PROJECT_FIELDS["cohort"], ""),
+                "program_type":     f.get(PROJECT_FIELDS["program_type"], ""),
                 "total_meetings":   f.get(PROJECT_FIELDS["total_meetings"], "0") or "0",
                 **week_data,
             })
@@ -843,6 +845,12 @@ def show_projects():
             category = project["category"] or "—"
             cohort   = project["cohort"]   or "—"
             st.caption(f"Category: {category}  |  Cohort: {cohort}")
+
+            if str(project.get("program_type", "")).startswith("WL:"):
+                st.warning(
+                    "⚠️ **White Label Project** — This program runs under our partner's branding. "
+                    "Please avoid mentioning Lumiere in any communication with these students."
+                )
 
             completed = meetings_completed(project)
             week_html = render_week_tracker(project)
