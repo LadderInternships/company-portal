@@ -1229,7 +1229,7 @@ def show_payments():
         bank  = company.get("bank_account_name", "")
         email = company.get("payment_email", "")
         intl  = company.get("us_or_intl", "")
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         with c1:
             st.markdown(
                 '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
@@ -1243,14 +1243,6 @@ def show_payments():
                 '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
                 '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Payment Email</p>'
                 f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{email or "—"}</p>'
-                '</div>',
-                unsafe_allow_html=True,
-            )
-        with c3:
-            st.markdown(
-                '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
-                '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Payment Type</p>'
-                f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{intl or "—"}</p>'
                 '</div>',
                 unsafe_allow_html=True,
             )
