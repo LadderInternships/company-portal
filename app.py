@@ -123,6 +123,8 @@ PROJECT_FIELDS = {
     "final_output":       "Final Output of the project",
     "cohort":             "Which cohort for this project",
     "program_type":       "Program Type",
+    "pm_name":            "Program Manager",
+    "pm_email":           "Program Manager Email",
     "total_meetings":     "How many meetings have you had? Rollup (from Notes/Feedback (Company, Student, LC))",
     "week_1":             "Week 1 - Meeting Occurred",
     "week_2":             "Week 2 - Meeting Occurred",
@@ -165,6 +167,7 @@ STUDENT_FIELDS = {
     "candidacy_reason":   "Student Response: Why are you a good candidate for our Internship program?",
     "resume_url":         "Resume (URL) (from Submissions Table)",
     "status_for_company": "Status for company",
+    "whitelabel":         "Whitelabel/co-branded? (from Program Type)",
 }
 
 # ─────────────────────────────────────────────
@@ -382,6 +385,8 @@ def get_projects_for_company(company_name):
                 "final_output":     f.get(PROJECT_FIELDS["final_output"], ""),
                 "cohort":           f.get(PROJECT_FIELDS["cohort"], ""),
                 "program_type":     f.get(PROJECT_FIELDS["program_type"], ""),
+                "pm_name":          f.get(PROJECT_FIELDS["pm_name"], ""),
+                "pm_email":         f.get(PROJECT_FIELDS["pm_email"], ""),
                 "total_meetings":   f.get(PROJECT_FIELDS["total_meetings"], "0") or "0",
                 **week_data,
             })
@@ -428,6 +433,7 @@ def get_students_for_company(company_name):
                 "candidacy_reason":     f.get(STUDENT_FIELDS["candidacy_reason"], ""),
                 "resume_url":           f.get(STUDENT_FIELDS["resume_url"], ""),
                 "status_for_company":   f.get(STUDENT_FIELDS["status_for_company"], ""),
+                "whitelabel":           f_str.get(STUDENT_FIELDS["whitelabel"], ""),
             })
         return students
     except Exception as e:
@@ -849,7 +855,7 @@ def show_projects():
             if str(project.get("program_type", "")).startswith("WL:"):
                 st.warning(
                     "⚠️ **White Label Project** — This program runs under our partner's branding. "
-                    "Please avoid mentioning Lumiere in any communication with these students."
+                    "Please avoid mentioning Ladder in any communication with these students."
                 )
 
             completed = meetings_completed(project)
@@ -934,6 +940,27 @@ def show_projects():
         cohort    = project["cohort"]   or "—"
         n_interns = project["confirmed_signups"]
 
+        wde_link = project.get("wde_link", "")
+        wde_section = (
+            '<p style="margin:0.75rem 0 0 0;">'
+            f'<a href="{wde_link}" target="_blank" style="font-size:0.85rem;color:#1B2B5E;'
+            f'text-decoration:underline;">📄 Weekly Deliverable Expectations</a></p>'
+        ) if wde_link else ""
+
+        pm_name  = project.get("pm_name", "")
+        pm_email = project.get("pm_email", "")
+        pm_html  = ""
+        if pm_name or pm_email:
+            pm_parts = []
+            if pm_name:
+                pm_parts.append(pm_name)
+            if pm_email:
+                pm_parts.append(f'<a href="mailto:{pm_email}" style="color:#1B2B5E;">{pm_email}</a>')
+            pm_html = (
+                '<p style="margin:0.4rem 0 0;font-size:0.83rem;color:#4A5568;">'
+                f'Program Manager: {" · ".join(pm_parts)}</p>'
+            )
+
         st.markdown(
             f'<div class="project-card">'
             f'<h4 style="margin:0 0 0.4rem 0;">{project["name"]}</h4>'
@@ -944,6 +971,8 @@ def show_projects():
             f'<p style="margin:0 0 0.4rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
             f'Meeting Progress — {completed}/8 weeks completed</p>'
             f'{week_html}'
+            f'{wde_section}'
+            f'{pm_html}'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -1054,6 +1083,12 @@ def show_interns():
             st.markdown(f"## {display_name}")
             if preferred and preferred != display_name:
                 st.caption(f"Goes by: {preferred}")
+
+            if "Hard WL" in str(selected.get("whitelabel", "")):
+                st.warning(
+                    "⚠️ **White Label Student** — This program runs under our partner's branding. "
+                    "Please avoid mentioning Ladder in any communication with this student."
+                )
 
             st.markdown("---")
             tab1, tab2, tab3 = st.tabs([
@@ -1243,7 +1278,7 @@ def show_payments():
         with c3:
             st.metric("Unlinked (compensate)", _int_display(p["nfa_unlinked"]))
         with c4:
-            st.metric("Hard Waitlist", _int_display(p["hard_wl"]))
+            st.metric("Hard White Label", _int_display(p["hard_wl"]))
         with c5:
             st.metric("NFA (excl. HWL)", _int_display(p["nfa_excl_hwl"]))
 
