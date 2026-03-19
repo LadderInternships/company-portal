@@ -106,6 +106,9 @@ COMPANY_FIELDS = {
     "poc_email":          "POC Email",
     "poc_title":          "POC Title",
     "address":            "Company Address",
+    "bank_account_name":  "Bank Account Name",
+    "payment_email":      "Payment Email",
+    "us_or_intl":         "FN: US or International?",
 }
 
 PROJECT_FIELDS = {
@@ -335,6 +338,9 @@ def get_company_by_email(email):
                 "poc_email":          f.get(COMPANY_FIELDS["poc_email"], ""),
                 "poc_title":          f.get(COMPANY_FIELDS["poc_title"], ""),
                 "address":            f.get(COMPANY_FIELDS["address"], ""),
+                "bank_account_name":  f.get(COMPANY_FIELDS["bank_account_name"], ""),
+                "payment_email":      f.get(COMPANY_FIELDS["payment_email"], ""),
+                "us_or_intl":         f_display.get(COMPANY_FIELDS["us_or_intl"], ""),
             }
     except Exception as e:
         st.error(f"Error finding company: {e}")
@@ -1217,6 +1223,38 @@ def show_payments():
         '<p class="sub-header">Compensation details per cohort for your company.</p>',
         unsafe_allow_html=True,
     )
+
+    company = get_company_by_email(st.session_state.supervisor_email)
+    if company:
+        bank  = company.get("bank_account_name", "")
+        email = company.get("payment_email", "")
+        intl  = company.get("us_or_intl", "")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(
+                '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
+                '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Bank Account Name</p>'
+                f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{bank or "—"}</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with c2:
+            st.markdown(
+                '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
+                '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Payment Email</p>'
+                f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{email or "—"}</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with c3:
+            st.markdown(
+                '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
+                '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Payment Type</p>'
+                f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{intl or "—"}</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        st.markdown("---")
 
     payments = get_payments_for_company(st.session_state.company_name)
 
