@@ -163,6 +163,7 @@ STUDENT_FIELDS = {
     "preferred_name":     "Student's First/Preferred Name",
     "program_type":       "Program Type",
     "project_assigned":   "Project Assigned",
+    "cohort_date":        "cohort date",
     "meetings_count":     "# of meetings (from Company Update Forms)",
     "weekly_notes":       "Manager Weekly Submissions Date and Notes",
     "timezone":           "Timezone",
@@ -435,6 +436,7 @@ def get_students_for_company(company_name):
                 "email":                f.get(STUDENT_FIELDS["email"], ""),
                 "program_type":         f_str.get(STUDENT_FIELDS["program_type"], ""),
                 "project_assigned":     f.get(STUDENT_FIELDS["project_assigned"], ""),
+                "cohort_date":          f.get(STUDENT_FIELDS["cohort_date"], ""),
                 "meetings_count":       f.get(STUDENT_FIELDS["meetings_count"], ""),
                 "weekly_notes":         f.get(STUDENT_FIELDS["weekly_notes"], ""),
                 "timezone":             f.get(STUDENT_FIELDS["timezone"], ""),
@@ -1029,6 +1031,10 @@ def show_intern_background(student):
     with col2:
         st.markdown("**Program Type**")
         st.markdown(student["program_type"] or "Not specified")
+        st.markdown("**Cohort Date**")
+        st.markdown(student.get("cohort_date") or "Not specified")
+        st.markdown("**Project Assigned**")
+        st.markdown(student.get("project_assigned") or "Not specified")
         st.markdown("**Email**")
         st.markdown(student["email"] or "Not specified")
 
