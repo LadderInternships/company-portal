@@ -846,11 +846,13 @@ def show_projects():
             if preferred and preferred != intern["full_name"]:
                 st.caption(f"Goes by: {preferred}")
             st.markdown("---")
-            tab1, tab2 = st.tabs(["🎓 Background", "📋 Meeting Activity"])
+            tab1, tab2, tab3 = st.tabs(["🎓 Background", "📋 Meeting Activity", "📄 Resume"])
             with tab1:
                 show_intern_background(intern)
             with tab2:
                 show_intern_meetings(intern)
+            with tab3:
+                show_intern_resume(intern)
             return
 
     # ── Project detail view ──
@@ -1080,15 +1082,15 @@ def show_intern_resume(student):
     st.markdown("### Resume")
     resume = student.get("resume_url", "")
     if isinstance(resume, list):
-        resume = ", ".join(str(u) for u in resume if u)
-    if resume:
-        urls = [u.strip() for u in resume.split(",") if u.strip().startswith("http")]
-        if urls:
-            for i, url in enumerate(urls):
-                label = f"View Resume" if len(urls) == 1 else f"View Resume {i + 1}"
-                st.markdown(f"[📄 {label}]({url})")
-        else:
-            st.markdown(resume)
+        urls = [str(u).strip() for u in resume if u]
+    elif isinstance(resume, str) and resume.strip():
+        urls = [resume.strip()]
+    else:
+        urls = []
+    if urls:
+        for i, url in enumerate(urls):
+            label = "View Resume" if len(urls) == 1 else f"View Resume {i + 1}"
+            st.markdown(f"[📄 {label}]({url})")
     else:
         st.info("No resume submitted yet.")
 
@@ -1132,14 +1134,17 @@ def show_interns():
                 )
 
             st.markdown("---")
-            tab1, tab2 = st.tabs([
+            tab1, tab2, tab3 = st.tabs([
                 "🎓 Background",
                 "📋 Meeting Activity",
+                "📄 Resume",
             ])
             with tab1:
                 show_intern_background(selected)
             with tab2:
                 show_intern_meetings(selected)
+            with tab3:
+                show_intern_resume(selected)
             return
 
     # ── Intern list ──
