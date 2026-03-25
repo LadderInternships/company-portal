@@ -154,6 +154,7 @@ PAYMENT_FIELDS = {
     "amount_required":    "Company Payment Amount Required (after Summer 2025)",
     "paid_amount":        "FN: Company Paid Amount",
     "payment_status":     "FN: Company Payment Status",
+    "onboarding_status":  "Onboarding Status - Payment Platform",
 }
 
 STUDENT_FIELDS = {
@@ -504,6 +505,7 @@ def get_payments_for_company(company_name):
                 "amount_required":   _num("amount_required"),
                 "paid_amount":       _num("paid_amount"),
                 "payment_status":    f.get(PAYMENT_FIELDS["payment_status"], ""),
+                "onboarding_status": f.get(PAYMENT_FIELDS["onboarding_status"], ""),
             })
         # Sort by cohort start date descending (most recent first)
         payments.sort(key=lambda p: p["cohort_start_date"] or "", reverse=True)
@@ -1376,7 +1378,7 @@ def show_payments():
 
         # ── Payment summary ──────────────────────────────────────────
         st.markdown('<p class="info-label">Payment Summary</p>', unsafe_allow_html=True)
-        pc1, pc2, pc3 = st.columns(3)
+        pc1, pc2, pc3, pc4 = st.columns(4)
         with pc1:
             st.markdown(
                 f'<div style="background:#EDF7ED; border-radius:10px; padding:1.1rem 1.4rem;">'
@@ -1404,6 +1406,16 @@ def show_payments():
                 f'letter-spacing:0.05em;">Payment Status</p>'
                 f'<p style="margin:0.3rem 0 0; font-size:1.2rem; font-weight:700; color:#333;">'
                 f'{status if status else "—"}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with pc4:
+            st.markdown(
+                f'<div style="background:#FAFAFA; border:1px solid #E5E7EB; border-radius:10px; padding:1.1rem 1.4rem;">'
+                f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
+                f'letter-spacing:0.05em;">Gusto Onboarding</p>'
+                f'<p style="margin:0.3rem 0 0; font-size:1.2rem; font-weight:700; color:#333;">'
+                f'{p["onboarding_status"] if p["onboarding_status"] else "—"}</p>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
