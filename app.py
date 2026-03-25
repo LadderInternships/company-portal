@@ -99,6 +99,7 @@ COMPANY_FIELDS = {
     "industry":           "Company Industry",
     "size":               "Company Size",
     "supervisor_name":    "Who would be the supervisor for the Ladder Intern?",
+    "supervisor_title":   "What is the title for the supervisor?",
     "supervisor_email":   "Supervisor Email",
     "description":        "Ladder-Revised Company Description",
     "website":            "What is your company's website?",
@@ -333,6 +334,7 @@ def get_company_by_email(email):
                 "industry":           f_display.get(COMPANY_FIELDS["industry"], ""),
                 "size":               f.get(COMPANY_FIELDS["size"], ""),
                 "supervisor_name":    f.get(COMPANY_FIELDS["supervisor_name"], ""),
+                "supervisor_title":   f.get(COMPANY_FIELDS["supervisor_title"], ""),
                 "supervisor_email":   f.get(COMPANY_FIELDS["supervisor_email"], ""),
                 "description":        f.get(COMPANY_FIELDS["description"], ""),
                 "website":            f.get(COMPANY_FIELDS["website"], ""),
@@ -774,9 +776,12 @@ def show_company_overview():
         with col3:
             st.markdown("**Supervisor**")
             sup_name  = company["supervisor_name"] or "—"
+            sup_title = company.get("supervisor_title", "")
             sup_email = company["supervisor_email"] or "—"
             sup_li    = company["supervisor_linkedin"]
             st.markdown(f"{sup_name} — {sup_email}")
+            if sup_title:
+                st.caption(sup_title)
             if sup_li:
                 st.markdown(f"[LinkedIn →]({safe_url(sup_li)})")
         with col4:
