@@ -91,6 +91,11 @@ def send_magic_link(email, company_name, supervisor_name):
         return False
 
 # ─────────────────────────────────────────────
+# FORM URLS
+# ─────────────────────────────────────────────
+MEETING_UPDATE_FORM = "https://airtable.com/appx1OFdMpDfxtEkR/shrn5BpbGVIB5rGxN"
+
+# ─────────────────────────────────────────────
 # FIELD MAPPINGS
 # ─────────────────────────────────────────────
 COMPANY_FIELDS = {
@@ -888,19 +893,30 @@ def show_projects():
 
             # ── Meeting progress ─────────────────────────────────────
             completed = meetings_completed(project)
-            st.markdown(
-                f'<p style="margin:1rem 0 0.5rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
-                f'Meeting Progress — {completed} of 8 weeks completed</p>',
-                unsafe_allow_html=True,
-            )
-            cols = st.columns(8)
-            for i, col in enumerate(cols, start=1):
-                done = project.get(f"week_{i}", False)
-                col.markdown(
-                    f'<div style="text-align:center;padding:0.4rem 0;border-radius:8px;'
-                    f'background:{"#1B2B5E" if done else "#F0F2F6"};'
-                    f'color:{"#fff" if done else "#999"};font-size:0.78rem;font-weight:600;">'
-                    f'W{i}<br>{"✓" if done else "·"}</div>',
+            progress_col, form_col = st.columns([3, 1])
+            with progress_col:
+                st.markdown(
+                    f'<p style="margin:1rem 0 0.5rem 0;font-size:0.85rem;font-weight:600;color:#1B2B5E;">'
+                    f'Meeting Progress — {completed} of 8 weeks completed</p>',
+                    unsafe_allow_html=True,
+                )
+                cols = st.columns(8)
+                for i, col in enumerate(cols, start=1):
+                    done = project.get(f"week_{i}", False)
+                    col.markdown(
+                        f'<div style="text-align:center;padding:0.4rem 0;border-radius:8px;'
+                        f'background:{"#1B2B5E" if done else "#F0F2F6"};'
+                        f'color:{"#fff" if done else "#999"};font-size:0.78rem;font-weight:600;">'
+                        f'W{i}<br>{"✓" if done else "·"}</div>',
+                        unsafe_allow_html=True,
+                    )
+            with form_col:
+                st.markdown(
+                    f'<div style="margin-top:1rem;background:#F0F4FF;border:1px solid #C7D3F5;'
+                    f'border-radius:10px;padding:0.75rem 1rem;font-size:0.82rem;color:#1B2B5E;">'
+                    f'Done with a meeting? <a href="{MEETING_UPDATE_FORM}" target="_blank" '
+                    f'style="color:#1B2B5E;font-weight:600;">Fill out this form →</a>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
             st.markdown("---")
@@ -1234,7 +1250,7 @@ def show_resources():
         {
             "title":       "Weekly Update Form",
             "description": "Submit your notes and intern progress after each weekly meeting. This keeps the Ladder team informed.",
-            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrn5BpbGVIB5rGxN",
+            "url":         MEETING_UPDATE_FORM,
         },
         {
             "title":       "Midterm Feedback Form",
