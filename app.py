@@ -674,7 +674,7 @@ def show_login_page():
                 st.rerun()
         else:
             st.markdown("### Supervisor Email")
-            st.markdown("Sign in with the email you registered with Lumiere Ladder.")
+            st.markdown("Sign in with the email you registered with Ladder.")
             with st.form("login_form"):
                 email = st.text_input(
                     "Email Address",
