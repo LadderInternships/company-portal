@@ -1410,7 +1410,6 @@ def show_resources():
 
     if not cohorts:
         st.info("No active cohorts found.")
-        return
 
     for cohort_name, cohort_projects in cohorts.items():
         cohort_signups = sum(p.get("total_signups", 0) for p in cohort_projects)
@@ -1468,6 +1467,32 @@ def show_resources():
             st.caption("No projects with sign-ups yet.")
 
         st.markdown("---")
+
+    # ── Static resource links (always visible) ──
+    st.markdown("### All Resources")
+    static_resources = [
+        {"title": "Project Builder Form",                "description": "Set up and submit your intern project details for the upcoming cohort.",                                         "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7"},
+        {"title": "First Week Meeting Availability Form","description": "Share your availability so we can schedule the kick-off meeting with your intern.",                              "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
+        {"title": "Weekly Update Form",                  "description": "Submit your notes and intern progress after each weekly meeting.",                                               "url": MEETING_UPDATE_FORM},
+        {"title": "Midterm Feedback Form",               "description": "Share your midterm feedback on your intern's performance halfway through the program.",                          "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
+        {"title": "End of Cohort Review Form",           "description": "Submit your final review and evaluation of your intern at the end of the program.",                             "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
+        {"title": "Referral Form",                       "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",                                  "url": ""},
+        {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": ""},
+        {"title": "Contact Your Program Manager",        "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",                           "url": ""},
+    ]
+    for resource in static_resources:
+        link_html = (
+            f'<a href="{resource["url"]}" target="_blank" style="color:#1B2B5E;text-decoration:none;font-weight:600;">Open &rarr;</a>'
+            if resource["url"] else
+            '<span style="color:#999;font-size:0.85rem;">Link coming soon</span>'
+        )
+        st.markdown(
+            f'<div style="background:#FAFAFA;border:1px solid #E5E7EB;border-radius:10px;padding:1.25rem;margin-bottom:1rem;">'
+            f'<h4 style="margin:0 0 0.35rem 0;">{resource["title"]}</h4>'
+            f'<p style="margin:0 0 0.75rem 0;color:#555;font-size:0.93rem;">{resource["description"]}</p>'
+            f'{link_html}</div>',
+            unsafe_allow_html=True,
+        )
 
 # ─────────────────────────────────────────────
 # PAYMENTS VIEW
