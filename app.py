@@ -130,7 +130,7 @@ PROJECT_FIELDS = {
     "timezones":          "Timezones of assigned students",
     "meeting_day":        "Day for Weekly meeting",
     "final_output":       "Final Output of the project",
-    "cohort":             "Which cohort for this project",
+    "cohort":             "Cohort of Project",
     "program_type":       "Program Type",
     "pm_name":            "Program Manager",
     "pm_email":           "Program Manager Email",
@@ -145,7 +145,7 @@ PROJECT_FIELDS = {
     "week_7":             "Week 7 - Meeting Occurred",
     "week_8":             "Week 8 - Meeting Occurred",
     "is_project_active":  "Is this project active? (from Cohort of Project)",
-    "is_cohort_active":   "Is this cohort active? (from Cohort of Availability) (from Company Availability)",
+    "is_cohort_active":   "Is this cohort active?",
     "total_signups":      "# Total sign ups (confirmed + tentative)",
 }
 
@@ -851,7 +851,7 @@ def show_company_overview():
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
 
-    active_projects = [p for p in projects if p.get("cohort") and p.get("is_cohort_active")]
+    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
 
     if not active_projects:
         st.info("No active cohorts at this time.")
@@ -1342,7 +1342,7 @@ def show_resources():
     projects = get_projects_for_company(company_unique_id)
 
     # Active projects: linked to a cohort and cohort is active
-    active_projects = [p for p in projects if p.get("cohort") and p.get("is_cohort_active")]
+    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
 
     # Group by cohort name
     cohorts: dict = {}
