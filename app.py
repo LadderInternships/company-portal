@@ -856,6 +856,17 @@ def show_company_overview():
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
 
+    # DEBUG — remove once working
+    with st.expander("🔍 Debug: raw project field values", expanded=False):
+        for p in projects:
+            st.write({
+                "name":             p.get("name"),
+                "cohort":           p.get("cohort"),
+                "is_project_active":p.get("is_project_active"),
+                "is_cohort_active": p.get("is_cohort_active"),
+                "total_signups":    p.get("total_signups"),
+            })
+
     active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active") and p.get("total_signups", 0) > 0]
 
     if not active_projects:
