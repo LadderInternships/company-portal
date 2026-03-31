@@ -395,8 +395,13 @@ def get_projects_for_company(company_name):
             except (ValueError, TypeError):
                 total_signups = 0
 
-            is_project_active = f.get(PROJECT_FIELDS["is_project_active"], "").lower() == "true"
-            is_cohort_active  = f.get(PROJECT_FIELDS["is_cohort_active"],  "").lower() == "true"
+            def _is_active(val):
+                if isinstance(val, list):
+                    return any(str(v).strip().lower() in ("true", "active") for v in val)
+                return str(val).strip().lower() in ("true", "active")
+
+            is_project_active = _is_active(f.get(PROJECT_FIELDS["is_project_active"], ""))
+            is_cohort_active  = _is_active(f.get(PROJECT_FIELDS["is_cohort_active"],  ""))
 
             projects.append({
                 "id":               r["id"],
@@ -851,7 +856,7 @@ def show_company_overview():
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
 
-    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
+    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active") and p.get("total_signups", 0) > 0]
 
     if not active_projects:
         st.info("No active cohorts at this time.")
@@ -1342,7 +1347,7 @@ def show_resources():
     projects = get_projects_for_company(company_unique_id)
 
     # Active projects: linked to a cohort and cohort is active
-    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
+    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active") and p.get("total_signups", 0) > 0]
 
     # Group by cohort name
     cohorts: dict = {}
