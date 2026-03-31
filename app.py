@@ -864,11 +864,29 @@ def show_company_overview():
     with st.expander("🔍 Debug: raw project field values", expanded=False):
         for p in projects:
             st.write({
-                "name":             p.get("name"),
-                "cohort":           p.get("cohort"),
-                "is_project_active":p.get("is_project_active"),
-                "is_cohort_active": p.get("is_cohort_active"),
-                "total_signups":    p.get("total_signups"),
+                "name":              p.get("name"),
+                "cohort":            p.get("cohort"),
+                "is_project_active": p.get("is_project_active"),
+                "is_cohort_active":  p.get("is_cohort_active"),
+                "total_signups":     p.get("total_signups"),
+                "midterm_submitted": p.get("midterm_submitted"),
+                "final_submitted":   p.get("final_submitted"),
+            })
+    # DEBUG raw — show the actual Airtable string before parsing
+    with st.expander("🔍 Debug: raw Airtable strings (pre-parse)", expanded=False):
+        tables = get_tables()
+        uid = st.session_state.get("company_unique_id", "")
+        safe = uid.replace("'", "\\'")
+        raw_records = tables["projects"].all(
+            formula=f"FIND('{safe}', {{Unique Record ID_Company Projects}}) > 0",
+            cell_format="string", user_locale="en-us", time_zone="America/New_York",
+        )
+        for r in raw_records:
+            f = r["fields"]
+            st.write({
+                "name":              f.get("Name of the Project"),
+                "midterm_raw":       f.get("Midterm feedback submission (from Company Availability)"),
+                "final_raw":         f.get("Final feedback submission (from Company Availability)"),
             })
 
     active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active") and p.get("total_signups", 0) > 0]
