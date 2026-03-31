@@ -1338,68 +1338,136 @@ def show_resources():
         unsafe_allow_html=True
     )
 
-    resources = [
-        {
-            "title":       "Project Builder Form",
-            "description": "Set up and submit your intern project details for the upcoming cohort.",
-            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7",
-        },
-        {
-            "title":       "First Week Meeting Availability Form",
-            "description": "Share your availability so we can schedule the kick-off meeting with your intern.",
-            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
-        },
-        {
-            "title":       "Weekly Update Form",
-            "description": "Submit your notes and intern progress after each weekly meeting. This keeps the Ladder team informed.",
-            "url":         MEETING_UPDATE_FORM,
-        },
-        {
-            "title":       "Midterm Feedback Form",
-            "description": "Share your midterm feedback on your intern's performance and progress halfway through the program.",
-            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
-        },
-        {
-            "title":       "End of Cohort Review Form",
-            "description": "Submit your final review and evaluation of your intern at the end of the program.",
-            "url":         "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
-        },
-        {
-            "title":       "Referral Form",
-            "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",
-            "url":         "",
-        },
-        {
-            "title":       "Ladder Supervisor Guide",
-            "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.",
-            "url":         "",
-        },
-        {
-            "title":       "Contact Your Program Manager",
-            "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",
-            "url":         "",
-        },
+    company_unique_id = st.session_state.get("company_unique_id", "")
+    projects = get_projects_for_company(company_unique_id)
+
+    # Active projects: linked to a cohort and cohort is active
+    active_projects = [p for p in projects if p.get("cohort") and p.get("is_cohort_active")]
+
+    # Group by cohort name
+    cohorts: dict = {}
+    for p in active_projects:
+        cohort_name = p.get("cohort") or "Active Cohort"
+        cohorts.setdefault(cohort_name, []).append(p)
+
+    total_interns = sum(p.get("total_signups", 0) for p in active_projects)
+
+    # ── Summary strip ──
+    st.markdown(
+        f"""
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:100px;background:rgba(0,0,0,0.03);border-radius:8px;padding:12px 14px;">
+            <p style="margin:0;font-size:11px;color:#999;">Active cohorts</p>
+            <p style="margin:4px 0 0;font-size:20px;font-weight:500;color:#1a1a1a;">{len(cohorts)}</p>
+          </div>
+          <div style="flex:1;min-width:100px;background:rgba(0,0,0,0.03);border-radius:8px;padding:12px 14px;">
+            <p style="margin:0;font-size:11px;color:#999;">Active projects</p>
+            <p style="margin:4px 0 0;font-size:20px;font-weight:500;color:#1a1a1a;">{len(active_projects)}</p>
+          </div>
+          <div style="flex:1;min-width:100px;background:rgba(0,0,0,0.03);border-radius:8px;padding:12px 14px;">
+            <p style="margin:0;font-size:11px;color:#999;">Total interns</p>
+            <p style="margin:4px 0 0;font-size:20px;font-weight:500;color:#1a1a1a;">{total_interns}</p>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── Legend ──
+    st.markdown(
+        """
+        <div style="display:flex;gap:16px;margin-bottom:20px;padding:8px 12px;
+                    background:rgba(0,0,0,0.02);border-radius:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:14px;border-radius:3px;background:#3C3489;"></div>
+            <span style="font-size:11px;color:#666;">Fulfilled — Yes</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,0.2);"></div>
+            <span style="font-size:11px;color:#666;">Not yet — No</span>
+          </div>
+          <span style="font-size:11px;color:#bbb;margin-left:auto;">Toggle each checkbox to mark complete</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    COHORT_RESOURCES = [
+        {"id": "project_builder_form",    "label": "Project builder form",         "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7"},
+        {"id": "ladder_supervisor_guide", "label": "Ladder supervisor guide",       "url": ""},
+        {"id": "referral_form",           "label": "Referral form",                 "url": ""},
+        {"id": "onboarding_forms",        "label": "Onboarding forms",              "url": ""},
+        {"id": "contact_pm",              "label": "Contact your program manager",  "url": ""},
     ]
 
-    for resource in resources:
-        if resource["url"]:
-            link_html = (
-                f'<a href="{resource["url"]}" target="_blank" '
-                f'style="color: #1B2B5E; text-decoration: none; font-weight: 600;">Open &rarr;</a>'
-            )
-        else:
-            link_html = '<span style="color:#999;font-size:0.85rem;">Link coming soon</span>'
+    PROJECT_RESOURCES = [
+        {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": ""},
+        {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
+        {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM},
+        {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
+        {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
+    ]
 
-        st.markdown(
-            f'<div style="background: #FAFAFA; border: 1px solid #E5E7EB; '
-            f'border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem;">'
-            f'<h4 style="margin: 0 0 0.35rem 0;">{resource["title"]}</h4>'
-            f'<p style="margin: 0 0 0.75rem 0; color: #555; font-size:0.93rem;">'
-            f'{resource["description"]}</p>'
-            f'{link_html}'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    if not cohorts:
+        st.info("No active cohorts found.")
+        return
+
+    for cohort_name, cohort_projects in cohorts.items():
+        cohort_signups = sum(p.get("total_signups", 0) for p in cohort_projects)
+
+        # ── Cohort resource card ──
+        with st.expander(f"🟢 {cohort_name}  ·  Cohort resources  ·  {cohort_signups} sign-ups", expanded=True):
+            cohort_done = 0
+            for res in COHORT_RESOURCES:
+                sk = f"res_cohort_{cohort_name}_{res['id']}"
+                if sk not in st.session_state:
+                    st.session_state[sk] = False
+                checked = st.checkbox(res["label"], key=sk)
+                if checked:
+                    cohort_done += 1
+                    if res["url"]:
+                        st.caption(f"[Open →]({res['url']})")
+                else:
+                    if res["url"]:
+                        st.caption(f"[Open →]({res['url']})")
+                    else:
+                        st.caption("Link coming soon")
+
+            pct = int((cohort_done / len(COHORT_RESOURCES)) * 100)
+            st.progress(pct / 100, text=f"{cohort_done}/{len(COHORT_RESOURCES)} complete")
+
+        # ── Project resource cards ──
+        if cohort_projects:
+            st.markdown(
+                '<p style="font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;'
+                f'letter-spacing:0.06em;margin:6px 0 8px 16px;">Project resources ({len(cohort_projects)})</p>',
+                unsafe_allow_html=True,
+            )
+            for proj in cohort_projects:
+                proj_label = (
+                    f"{proj.get('name','Untitled')}  ·  "
+                    f"{proj.get('total_signups', 0)} intern{'s' if proj.get('total_signups',0) != 1 else ''}"
+                )
+                with st.expander(proj_label, expanded=True):
+                    proj_done = 0
+                    for res in PROJECT_RESOURCES:
+                        sk = f"res_project_{proj['id']}_{res['id']}"
+                        if sk not in st.session_state:
+                            st.session_state[sk] = False
+                        checked = st.checkbox(res["label"], key=sk)
+                        if checked:
+                            proj_done += 1
+                        if res["url"]:
+                            st.caption(f"[Open →]({res['url']})")
+                        else:
+                            st.caption("Link coming soon")
+
+                    pct = int((proj_done / len(PROJECT_RESOURCES)) * 100)
+                    st.progress(pct / 100, text=f"{proj_done}/{len(PROJECT_RESOURCES)} complete")
+        else:
+            st.caption("No projects with sign-ups yet.")
+
+        st.markdown("---")
 
 # ─────────────────────────────────────────────
 # PAYMENTS VIEW
