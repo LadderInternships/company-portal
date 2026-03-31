@@ -771,6 +771,68 @@ def show_company_overview():
 
     st.markdown("---")
 
+    # ── Ladder Points of Contact ──
+    st.markdown("### Your Ladder Points of Contact")
+    st.caption("Your Ladder points of contact")
+
+    col_cp, col_pm = st.columns(2)
+
+    with col_cp:
+        st.markdown(
+            """
+            <div style="background:#fff; border:0.5px solid rgba(0,0,0,0.12); border-radius:12px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                <div style="width:44px; height:44px; border-radius:50%; background:#EEEDFE; display:flex; align-items:center;
+                  justify-content:center; font-weight:500; font-size:14px; color:#3C3489; flex-shrink:0;">CP</div>
+                <div>
+                  <p style="font-weight:500; font-size:15px; margin:0;">Company Partnerships Manager</p>
+                  <p style="font-size:12px; color:#6b7280; margin:4px 0 0;">Your onboarding point of contact</p>
+                </div>
+              </div>
+              <div style="border-top:0.5px solid rgba(0,0,0,0.1); padding-top:12px; margin-bottom:12px;">
+                <p style="font-size:12px; color:#6b7280; margin:0 0 8px;">Reach out for help with:</p>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <span style="font-size:11px; background:#EEEDFE; color:#3C3489; padding:3px 10px; border-radius:20px;">Onboarding</span>
+                  <span style="font-size:11px; background:#EEEDFE; color:#3C3489; padding:3px 10px; border-radius:20px;">Payments</span>
+                  <span style="font-size:11px; background:#EEEDFE; color:#3C3489; padding:3px 10px; border-radius:20px;">Project build-out</span>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.text_input("Name", placeholder="Add name", key="cp_name")
+        st.text_input("Email", placeholder="Add email", key="cp_email")
+
+    with col_pm:
+        st.markdown(
+            """
+            <div style="background:#fff; border:0.5px solid rgba(0,0,0,0.12); border-radius:12px; padding:1.25rem;">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                <div style="width:44px; height:44px; border-radius:50%; background:#E1F5EE; display:flex; align-items:center;
+                  justify-content:center; font-weight:500; font-size:14px; color:#085041; flex-shrink:0;">PM</div>
+                <div>
+                  <p style="font-weight:500; font-size:15px; margin:0;">Program Manager</p>
+                  <p style="font-size:12px; color:#6b7280; margin:4px 0 0;">Your program point of contact</p>
+                </div>
+              </div>
+              <div style="border-top:0.5px solid rgba(0,0,0,0.1); padding-top:12px; margin-bottom:12px;">
+                <p style="font-size:12px; color:#6b7280; margin:0 0 8px;">Reach out for help with:</p>
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  <span style="font-size:11px; background:#E1F5EE; color:#085041; padding:3px 10px; border-radius:20px;">Scheduling</span>
+                  <span style="font-size:11px; background:#E1F5EE; color:#085041; padding:3px 10px; border-radius:20px;">Intern concerns</span>
+                  <span style="font-size:11px; background:#E1F5EE; color:#085041; padding:3px 10px; border-radius:20px;">Weekly forms</span>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.text_input("Name", placeholder="Add name", key="pm_name")
+        st.text_input("Email", placeholder="Add email", key="pm_email")
+
+    st.markdown("---")
+
     # ── Company profile ──
     st.markdown("### About Your Company")
     if company:
