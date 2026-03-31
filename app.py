@@ -753,6 +753,22 @@ def show_company_overview():
         unsafe_allow_html=True
     )
 
+    st.markdown(
+        """
+        <div style="background-color:#f0f4ff; border-left:4px solid #4a6cf7; padding:16px 20px; border-radius:6px; margin-bottom:16px;">
+        <p style="font-size:16px; margin:0;">
+        Welcome to the Ladder Company Portal! 🚀<br><br>
+        Ladder connects your company with driven, high-achieving students ready to make a real impact.
+        Through this portal, you can easily manage your <a href="?nav=projects" target="_self"><strong>projects</strong></a>,
+        discover talented interns, and access everything you need to run a seamless internship experience — all in one place.<br><br>
+        We're here to make it simple for you to invest in the next generation of leaders while getting real, meaningful work done.
+        Don't forget to check out our <a href="?nav=resources" target="_self"><strong>resources</strong></a> to get the most out of your Ladder experience.
+        </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.markdown("---")
 
     # ── Company profile ──
@@ -1444,6 +1460,17 @@ def show_payments():
 # DASHBOARD SHELL
 # ─────────────────────────────────────────────
 def show_dashboard():
+    # Handle nav query param for in-page hyperlinks
+    nav_map = {
+        "projects":  "📁 Your Projects",
+        "resources": "📚 Resources",
+    }
+    qp = st.query_params.get("nav", "")
+    if qp in nav_map:
+        st.session_state["nav_radio"] = nav_map[qp]
+        st.query_params.clear()
+        st.rerun()
+
     with st.sidebar:
         st.markdown(
         '<img src="data:image/png;base64,{}" width="55" style="filter: brightness(0) invert(1); margin-bottom: 0.5rem;">'.format(
