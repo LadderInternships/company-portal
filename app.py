@@ -144,6 +144,8 @@ PROJECT_FIELDS = {
     "week_6":             "Week 6 - Meeting Occurred",
     "week_7":             "Week 7 - Meeting Occurred",
     "week_8":             "Week 8 - Meeting Occurred",
+    "is_active":          "Is this project active? (Company Projects)",
+    "total_signups":      "# Total sign ups (confirmed + tentative)",
 }
 
 PAYMENT_FIELDS = {
@@ -386,6 +388,14 @@ def get_projects_for_company(company_name):
             except (ValueError, TypeError):
                 confirmed_signups = 0
 
+            raw_total = f.get(PROJECT_FIELDS["total_signups"], "0") or "0"
+            try:
+                total_signups = int(float(str(raw_total)))
+            except (ValueError, TypeError):
+                total_signups = 0
+
+            is_active = f.get(PROJECT_FIELDS["is_active"], "").lower() == "true"
+
             projects.append({
                 "id":               r["id"],
                 "unique_id":        f.get(PROJECT_FIELDS["unique_id"], ""),
@@ -406,6 +416,8 @@ def get_projects_for_company(company_name):
                 "pm_email":         f.get(PROJECT_FIELDS["pm_email"], ""),
                 "kickoff_doodle":   f.get(PROJECT_FIELDS["kickoff_doodle"], ""),
                 "total_meetings":   f.get(PROJECT_FIELDS["total_meetings"], "0") or "0",
+                "is_active":        is_active,
+                "total_signups":    total_signups,
                 **week_data,
             })
         return projects
@@ -833,50 +845,64 @@ def show_company_overview():
 
     st.markdown("---")
 
-    # ── Company profile ──
-    st.markdown("### About Your Company")
-    if company:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            if company["description"]:
-                st.markdown(company["description"])
-            else:
-                st.caption("No description on file.")
-        with col2:
-            if company["industry"]:
-                st.markdown('<p class="info-label">Industry</p>', unsafe_allow_html=True)
-                st.markdown(company["industry"])
-            if company["size"]:
-                st.markdown('<p class="info-label">Company Size</p>', unsafe_allow_html=True)
-                st.markdown(str(company["size"]))
-            if company["website"]:
-                st.markdown('<p class="info-label">Website</p>', unsafe_allow_html=True)
-                st.markdown(f"[{company['website']}]({safe_url(company['website'])})")
-            if company["address"]:
-                st.markdown('<p class="info-label">Location</p>', unsafe_allow_html=True)
-                st.markdown(company["address"])
+    # ── Active Cohorts ──
+    st.markdown("### Active Cohorts")
 
-        st.markdown("---")
+    active_projects = [p for p in projects if p.get("is_active")]
 
-        # Supervisor / POC info
-        col3, col4 = st.columns(2)
-        with col3:
-            st.markdown("**Supervisor**")
-            sup_name  = company["supervisor_name"] or "—"
-            sup_title = company.get("supervisor_title", "")
-            sup_email = company["supervisor_email"] or "—"
-            sup_li    = company["supervisor_linkedin"]
-            st.markdown(f"{sup_name} — {sup_email}")
-            if sup_title:
-                st.caption(sup_title)
-            if sup_li:
-                st.markdown(f"[LinkedIn →]({safe_url(sup_li)})")
-        with col4:
-            poc_email = company.get("poc_email", "")
-            poc_title = company.get("poc_title", "")
-            if poc_email and poc_email != company["supervisor_email"]:
-                st.markdown("**Additional Point of Contact**")
-                st.markdown(f"{poc_title or 'POC'}: {poc_email}")
+    if not active_projects:
+        st.info("No active cohorts at this time.")
+    else:
+        # Group by cohort name
+        cohorts: dict = {}
+        for p in active_projects:
+            cohort_name = p.get("cohort") or "Uncategorised Cohort"
+            cohorts.setdefault(cohort_name, []).append(p)
+
+        for cohort_name, cohort_projects in cohorts.items():
+            st.markdown(f"#### {cohort_name}")
+
+            for proj in cohort_projects:
+                weeks_html = ""
+                for w in range(1, 9):
+                    occurred = proj.get(f"week_{w}", False)
+                    bg    = "#22c55e" if occurred else "#e5e7eb"
+                    color = "#fff"    if occurred else "#9ca3af"
+                    check = "✓"       if occurred else str(w)
+                    weeks_html += (
+                        f'<div style="width:36px;height:36px;border-radius:8px;background:{bg};'
+                        f'display:flex;align-items:center;justify-content:center;'
+                        f'font-size:12px;font-weight:600;color:{color};">{check}</div>'
+                    )
+
+                st.markdown(
+                    f"""
+                    <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;
+                                padding:1.25rem;margin-bottom:1rem;">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start;
+                                  flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+                        <div>
+                          <p style="font-weight:600;font-size:15px;margin:0;">{proj.get('name','—')}</p>
+                          <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">
+                            Manager: {proj.get('manager','—')} &nbsp;|&nbsp;
+                            Category: {proj.get('category','—')}
+                          </p>
+                        </div>
+                        <div style="text-align:right;">
+                          <span style="font-size:13px;font-weight:600;color:#1B2B5E;">
+                            {proj.get('total_signups', 0)} sign-ups
+                          </span><br>
+                          <span style="font-size:11px;color:#6b7280;">confirmed + tentative</span>
+                        </div>
+                      </div>
+                      <p style="font-size:12px;color:#6b7280;margin:0 0 8px;">Weekly meeting progress:</p>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        {weeks_html}
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
     st.markdown("---")
     st.info("Use **Your Projects** in the sidebar to view your project details and meeting progress.")
