@@ -746,7 +746,7 @@ def show_company_overview():
     projects = get_projects_for_company(company_unique_id)
     students = get_students_for_company(company_unique_id)
 
-    st.markdown('<p class="main-header">Company Overview</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Company Dashboard</p>', unsafe_allow_html=True)
     st.markdown(
         f'<p class="sub-header">Welcome back, {st.session_state.supervisor_name}! '
         f'Here\'s a summary of your Ladder internship program.</p>',
@@ -1461,7 +1461,7 @@ def show_dashboard():
 
         view = st.radio(
             "Navigation",
-            ["🏢 Company Overview", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Resources"],
+            ["🏢 Company Dashboard", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Resources"],
             label_visibility="collapsed",
             key="nav_radio",
         )
@@ -1491,7 +1491,7 @@ def show_dashboard():
             unsafe_allow_html=True
         )
 
-    if view == "🏢 Company Overview":
+    if view == "🏢 Company Dashboard":
         show_company_overview()
     elif view == "📁 Your Projects":
         show_projects()
