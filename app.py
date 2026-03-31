@@ -851,7 +851,7 @@ def show_company_overview():
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
 
-    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
+    active_projects = [p for p in projects if p.get("cohort") and p.get("is_cohort_active")]
 
     if not active_projects:
         st.info("No active cohorts at this time.")
