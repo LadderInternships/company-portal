@@ -144,8 +144,8 @@ PROJECT_FIELDS = {
     "week_6":             "Week 6 - Meeting Occurred",
     "week_7":             "Week 7 - Meeting Occurred",
     "week_8":             "Week 8 - Meeting Occurred",
-    "is_project_active":  "Is this project active? (from Cohort of Project)",
-    "is_cohort_active":   "Is this cohort active?",
+    "is_project_active":  "Is this project active?  (from Cohort of Project)",
+    "is_cohort_active":   "Is this cohort active?  (from Cohort of Availability) (from Company Availability)",
     "total_signups":      "# Total sign ups (confirmed + tentative)",
 }
 
