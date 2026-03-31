@@ -147,6 +147,8 @@ PROJECT_FIELDS = {
     "is_project_active":  "Is this project active?  (from Cohort of Project)",
     "is_cohort_active":   "Is this cohort active?  (from Cohort of Availability) (from Company Availability)",
     "total_signups":      "# Total sign ups (confirmed + tentative)",
+    "midterm_submitted":  "Midterm feedback submission (from Company Availability)",
+    "final_submitted":    "Final feedback submission (from Company Availability)",
 }
 
 PAYMENT_FIELDS = {
@@ -426,6 +428,8 @@ def get_projects_for_company(company_name):
                 "is_project_active": is_project_active,
                 "is_cohort_active":  is_cohort_active,
                 "total_signups":     total_signups,
+                "midterm_submitted": _is_active(f.get(PROJECT_FIELDS["midterm_submitted"], "")),
+                "final_submitted":   _is_active(f.get(PROJECT_FIELDS["final_submitted"],   "")),
                 **week_data,
             })
         return projects
@@ -1040,6 +1044,21 @@ def show_projects():
                     f'</div>',
                     unsafe_allow_html=True,
                 )
+            # ── Feedback submission status ───────────────────────────
+            midterm_done = project.get("midterm_submitted", False)
+            final_done   = project.get("final_submitted",   False)
+            def _badge(submitted):
+                if submitted:
+                    return '<span style="background:#E1F5EE;color:#085041;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;">✓ Submitted</span>'
+                return '<span style="background:#F3F4F6;color:#9CA3AF;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;">Not submitted</span>'
+            st.markdown(
+                f'<div style="display:flex;gap:16px;flex-wrap:wrap;margin:0.5rem 0 1rem;">'
+                f'<div><span style="font-size:12px;color:#6b7280;margin-right:6px;">Midterm feedback:</span>{_badge(midterm_done)}</div>'
+                f'<div><span style="font-size:12px;color:#6b7280;margin-right:6px;">Final feedback:</span>{_badge(final_done)}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
             st.markdown("---")
 
             c1, c2 = st.columns(2)
@@ -1464,6 +1483,20 @@ def show_resources():
                     f"{proj.get('total_signups', 0)} intern{'s' if proj.get('total_signups',0) != 1 else ''}"
                 )
                 with st.expander(proj_label, expanded=True):
+                    # Feedback submission status
+                    midterm_done = proj.get("midterm_submitted", False)
+                    final_done   = proj.get("final_submitted",   False)
+                    def _res_badge(submitted):
+                        if submitted:
+                            return '<span style="background:#E1F5EE;color:#085041;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;">✓ Submitted</span>'
+                        return '<span style="background:#F3F4F6;color:#9CA3AF;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;">Not submitted</span>'
+                    st.markdown(
+                        f'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">'
+                        f'<div><span style="font-size:12px;color:#6b7280;margin-right:4px;">Midterm:</span>{_res_badge(midterm_done)}</div>'
+                        f'<div><span style="font-size:12px;color:#6b7280;margin-right:4px;">Final:</span>{_res_badge(final_done)}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
                     proj_done = 0
                     for res in PROJECT_RESOURCES:
                         sk = f"res_project_{proj['id']}_{res['id']}"
