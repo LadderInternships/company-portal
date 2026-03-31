@@ -144,7 +144,8 @@ PROJECT_FIELDS = {
     "week_6":             "Week 6 - Meeting Occurred",
     "week_7":             "Week 7 - Meeting Occurred",
     "week_8":             "Week 8 - Meeting Occurred",
-    "is_active":          "Is this project active? (Company Projects)",
+    "is_project_active":  "Is this project active? (from Cohort of Project)",
+    "is_cohort_active":   "Is this cohort active? (from Cohort of Availability) (from Company Availability)",
     "total_signups":      "# Total sign ups (confirmed + tentative)",
 }
 
@@ -394,7 +395,8 @@ def get_projects_for_company(company_name):
             except (ValueError, TypeError):
                 total_signups = 0
 
-            is_active = f.get(PROJECT_FIELDS["is_active"], "").lower() == "true"
+            is_project_active = f.get(PROJECT_FIELDS["is_project_active"], "").lower() == "true"
+            is_cohort_active  = f.get(PROJECT_FIELDS["is_cohort_active"],  "").lower() == "true"
 
             projects.append({
                 "id":               r["id"],
@@ -416,8 +418,9 @@ def get_projects_for_company(company_name):
                 "pm_email":         f.get(PROJECT_FIELDS["pm_email"], ""),
                 "kickoff_doodle":   f.get(PROJECT_FIELDS["kickoff_doodle"], ""),
                 "total_meetings":   f.get(PROJECT_FIELDS["total_meetings"], "0") or "0",
-                "is_active":        is_active,
-                "total_signups":    total_signups,
+                "is_project_active": is_project_active,
+                "is_cohort_active":  is_cohort_active,
+                "total_signups":     total_signups,
                 **week_data,
             })
         return projects
@@ -848,7 +851,7 @@ def show_company_overview():
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
 
-    active_projects = [p for p in projects if p.get("is_active")]
+    active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
 
     if not active_projects:
         st.info("No active cohorts at this time.")
