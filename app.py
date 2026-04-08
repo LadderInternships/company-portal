@@ -20,7 +20,7 @@ st.set_page_config(
 # ─────────────────────────────────────────────
 @st.cache_resource
 def get_airtable_api():
-    return Api(st.secrets["AIRTABLE_API_KEY"])
+    return Api(st.secrets["AIRTABLE_API_KEY"], timeout=15)
 
 @st.cache_resource
 def get_tables():
@@ -324,8 +324,7 @@ def get_company_by_email(email):
     try:
         safe = email.replace("'", "\\'")
         records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')",
-            timeout=(5, 15)
+            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
         )
         if records:
             r = records[0]
