@@ -317,14 +317,15 @@ for _key, _default in [
 # ─────────────────────────────────────────────
 # DATA FUNCTIONS
 # ─────────────────────────────────────────────
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def get_company_by_email(email):
     """Find a company record by supervisor email."""
     tables = get_tables()
     try:
         safe = email.replace("'", "\\'")
         records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
+            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')",
+            timeout=(5, 15)
         )
         if records:
             r = records[0]
@@ -359,7 +360,8 @@ def get_company_by_email(email):
                 "us_or_intl":         f_display.get(COMPANY_FIELDS["us_or_intl"], ""),
             }
     except Exception as e:
-        st.error(f"Error finding company: {e}")
+        st.error("Unable to reach the database. Please try again in a moment.")
+        return None
     return None
 
 @st.cache_data(ttl=300)
@@ -728,7 +730,8 @@ def show_login_page():
                 )
                 preview_submitted = st.form_submit_button("Preview as Company", use_container_width=True)
                 if preview_submitted:
-                    company = get_company_by_email(preview_email)
+                    with st.spinner("Looking up company..."):
+                        company = get_company_by_email(preview_email)
                     if company:
                         st.session_state.authenticated      = True
                         st.session_state.company_name       = company["name"]
@@ -859,35 +862,6 @@ def show_company_overview():
 
     # ── Active Cohorts ──
     st.markdown("### Active Cohorts")
-
-    # DEBUG — remove once working
-    with st.expander("🔍 Debug: raw project field values", expanded=False):
-        for p in projects:
-            st.write({
-                "name":              p.get("name"),
-                "cohort":            p.get("cohort"),
-                "is_project_active": p.get("is_project_active"),
-                "is_cohort_active":  p.get("is_cohort_active"),
-                "total_signups":     p.get("total_signups"),
-                "midterm_submitted": p.get("midterm_submitted"),
-                "final_submitted":   p.get("final_submitted"),
-            })
-    # DEBUG raw — show the actual Airtable string before parsing
-    with st.expander("🔍 Debug: raw Airtable strings (pre-parse)", expanded=False):
-        tables = get_tables()
-        uid = st.session_state.get("company_unique_id", "")
-        safe = uid.replace("'", "\\'")
-        raw_records = tables["projects"].all(
-            formula=f"FIND('{safe}', {{Unique Record ID_Company Projects}}) > 0",
-            cell_format="string", user_locale="en-us", time_zone="America/New_York",
-        )
-        for r in raw_records:
-            f = r["fields"]
-            st.write({
-                "name":              f.get("Name of the Project"),
-                "midterm_raw":       f.get("Midterm feedback submission (from Company Availability)"),
-                "final_raw":         f.get("Final feedback submission (from Company Availability)"),
-            })
 
     active_projects = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active") and p.get("total_signups", 0) > 0]
 
