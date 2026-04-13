@@ -1439,9 +1439,32 @@ def show_interns():
     for s in students:
         s["cohort"] = extract_cohort_from_student_id(s.get("student_id", ""))
 
-    # Cohort filter
-    cohorts = sorted(set(s["cohort"] for s in students if s["cohort"]))
+    # Build cohort list sorted by project start date (matches Projects tab ordering)
+    projects_all = get_projects_for_company(_get_company_unique_id())
+    cohort_date_map: dict = {}
+    for p in projects_all:
+        c = p.get("cohort")
+        if c and c not in cohort_date_map:
+            raw = p.get("cohort_start_date", "")
+            if raw:
+                date_str = str(raw).strip().strip('"').strip("'").split("T")[0].strip()
+                try:
+                    cohort_date_map[c] = datetime.strptime(date_str, "%Y-%m-%d")
+                    continue
+                except ValueError:
+                    pass
+            cohort_date_map[c] = datetime.max
+
+    intern_cohort_names = set(s["cohort"] for s in students if s["cohort"])
+    cohorts = sorted(
+        intern_cohort_names,
+        key=lambda c: cohort_date_map.get(c, datetime.max)
+    )
+
     filtered = students
+    selected_cohort = "All Cohorts"
+    search = ""
+
     if len(cohorts) > 1:
         col_f1, col_f2 = st.columns([2, 3])
         with col_f1:
@@ -1467,18 +1490,12 @@ def show_interns():
         if search:
             filtered = [s for s in students if search.lower() in s["full_name"].lower()]
 
-    _cohort_label = ""
-    if len(cohorts) > 1 and "intern_cohort_filter" in st.session_state:
-        _sel = st.session_state["intern_cohort_filter"]
-        if _sel and _sel != "All Cohorts":
-            _cohort_label = f" in {_sel}"
+    _cohort_label = f" in {selected_cohort}" if selected_cohort != "All Cohorts" else " assigned to your company"
     st.markdown(
-        f"**{len(filtered)}** intern{'s' if len(filtered) != 1 else ''}"
-        + (_cohort_label or " assigned to your company")
+        f"**{len(filtered)}** intern{'s' if len(filtered) != 1 else ''}{_cohort_label}"
     )
 
-    st.markdown("---")
-    for student in filtered:
+    def _render_intern_row(student):
         meetings = parse_meetings_count(student.get("meetings_count", 0))
         col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
         with col1:
@@ -1495,6 +1512,49 @@ def show_interns():
         with col4:
             st.caption(f"📅 {meetings} meeting{'s' if meetings != 1 else ''}")
         st.markdown("---")
+
+    def _render_cohort_header(cohort_name):
+        launch_date = "TBD"
+        raw_dt = cohort_date_map.get(cohort_name)
+        if raw_dt and raw_dt != datetime.max:
+            launch_date = raw_dt.strftime("%B %-d, %Y")
+        st.markdown(
+            f'<div style="margin:2rem 0 0.25rem 0;">'
+            f'<h3 style="margin:0;color:#1B2B5E;">{cohort_name}</h3>'
+            f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
+            f'Expected Launch Date: {launch_date}</p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
+            unsafe_allow_html=True,
+        )
+
+    if selected_cohort == "All Cohorts" and len(cohorts) > 1:
+        # Group interns by cohort, preserving sorted order
+        cohort_map: dict = {}
+        for s in filtered:
+            key = s["cohort"] or ""
+            cohort_map.setdefault(key, []).append(s)
+
+        named   = [c for c in cohorts if c in cohort_map]
+        unnamed = [c for c in cohort_map if not c]
+        for cohort_name in named + unnamed:
+            group = cohort_map.get(cohort_name, [])
+            if not group:
+                continue
+            _render_cohort_header(cohort_name if cohort_name else "No Cohort")
+            for student in group:
+                _render_intern_row(student)
+    else:
+        # Single cohort selected — show header then flat list
+        if selected_cohort != "All Cohorts":
+            _render_cohort_header(selected_cohort)
+        else:
+            st.markdown("---")
+        for student in filtered:
+            _render_intern_row(student)
 
 # ─────────────────────────────────────────────
 # RESOURCES VIEW
