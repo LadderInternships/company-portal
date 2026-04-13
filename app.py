@@ -940,11 +940,21 @@ def _format_launch_date(raw):
     """Format a raw Airtable date string into 'Month D, YYYY'. Returns 'TBD' if unparseable."""
     if not raw:
         return "TBD"
-    date_str = str(raw).split(",")[0].strip().split("T")[0].strip()
+    # Strip surrounding quotes Airtable sometimes includes (e.g. '"June 1, 2026"')
+    date_str = str(raw).strip().strip('"').strip("'").strip()
+    # Try ISO format first (e.g. "2026-06-01" or "2026-06-01T00:00:00.000Z")
+    iso = date_str.split("T")[0].strip()
     try:
-        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %-d, %Y")
+        return datetime.strptime(iso, "%Y-%m-%d").strftime("%B %-d, %Y")
     except ValueError:
-        return date_str or "TBD"
+        pass
+    # Try already-human-readable formats Airtable may return
+    for fmt in ("%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y"):
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%B %-d, %Y")
+        except ValueError:
+            pass
+    return "TBD"
 
 def _status_badge(status):
     s = (status or "").lower()
@@ -1129,7 +1139,25 @@ def show_projects():
         unsafe_allow_html=True
     )
 
-    cohorts = sorted(set(p["cohort"] for p in projects if p["cohort"]))
+    # Build cohort list sorted by start date ascending (closest first)
+    cohort_date_map: dict = {}
+    for p in projects:
+        c = p.get("cohort")
+        if c and c not in cohort_date_map:
+            raw = p.get("cohort_start_date", "")
+            if raw:
+                date_str = str(raw).strip().strip('"').strip("'").split("T")[0].strip()
+                try:
+                    cohort_date_map[c] = datetime.strptime(date_str, "%Y-%m-%d")
+                    continue
+                except ValueError:
+                    pass
+            cohort_date_map[c] = datetime.max
+
+    cohorts = sorted(
+        cohort_date_map.keys(),
+        key=lambda c: cohort_date_map[c]
+    )
     show_grouped = False
     selected_cohort = "All Cohorts"
 
