@@ -149,6 +149,7 @@ PROJECT_FIELDS = {
     "total_signups":      "# Total sign ups (confirmed + tentative)",
     "midterm_submitted":  "Midterm feedback submission (from Company Availability)",
     "final_submitted":    "Final feedback submission (from Company Availability)",
+    "cohort_start_date":  "cohort start date (from Assigned Students)",
 }
 
 PAYMENT_FIELDS = {
@@ -431,6 +432,7 @@ def get_projects_for_company(company_name):
                 "total_signups":     total_signups,
                 "midterm_submitted": _is_active(f.get(PROJECT_FIELDS["midterm_submitted"], "")),
                 "final_submitted":   _is_active(f.get(PROJECT_FIELDS["final_submitted"],   "")),
+                "cohort_start_date": f.get(PROJECT_FIELDS["cohort_start_date"], ""),
                 **week_data,
             })
         return projects
@@ -934,6 +936,16 @@ def extract_cohort_from_student_id(student_id):
 # ─────────────────────────────────────────────
 # YOUR PROJECTS VIEW
 # ─────────────────────────────────────────────
+def _format_launch_date(raw):
+    """Format a raw Airtable date string into 'Month D, YYYY'. Returns 'TBD' if unparseable."""
+    if not raw:
+        return "TBD"
+    date_str = str(raw).split(",")[0].strip().split("T")[0].strip()
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%B %-d, %Y")
+    except ValueError:
+        return date_str or "TBD"
+
 def _status_badge(status):
     s = (status or "").lower()
     if "confirm" in s:
@@ -1111,18 +1123,20 @@ def show_projects():
     )
 
     cohorts = sorted(set(p["cohort"] for p in projects if p["cohort"]))
+    show_grouped = False
+    selected_cohort = "All Cohorts"
+
     if len(cohorts) > 1:
         cohort_options = ["All Cohorts"] + cohorts
         selected_cohort = st.selectbox("Filter by cohort", cohort_options, key="project_cohort_filter")
         if selected_cohort != "All Cohorts":
             projects = [p for p in projects if p["cohort"] == selected_cohort]
+        else:
+            show_grouped = True
     elif cohorts:
         st.caption(f"Cohort: {cohorts[0]}")
 
-    st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
-    st.markdown("---")
-
-    for project in projects:
+    def _render_project_card(project):
         category  = project["category"] or "—"
         cohort    = project["cohort"]   or "—"
         n_interns = project["confirmed_signups"]
@@ -1165,6 +1179,68 @@ def show_projects():
             st.session_state.selected_intern_id  = None
             st.rerun()
         st.markdown("---")
+
+    if show_grouped:
+        # Group projects by cohort
+        cohort_map: dict = {}
+        for p in projects:
+            key = p["cohort"] or ""
+            cohort_map.setdefault(key, []).append(p)
+
+        # Sort cohorts by cohort_start_date descending (newest first)
+        def _cohort_sort_key(cohort_name):
+            if not cohort_name:
+                return (1, datetime.min)
+            for p in cohort_map[cohort_name]:
+                raw = p.get("cohort_start_date", "")
+                if raw:
+                    date_str = str(raw).split(",")[0].strip().split("T")[0].strip()
+                    try:
+                        return (0, datetime.strptime(date_str, "%Y-%m-%d"))
+                    except ValueError:
+                        pass
+            return (0, datetime.min)
+
+        named   = sorted([c for c in cohort_map if c],  key=_cohort_sort_key, reverse=True)
+        unnamed = [c for c in cohort_map if not c]
+        sorted_cohorts = named + unnamed
+
+        st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
+
+        for cohort_name in sorted_cohorts:
+            cohort_projects = cohort_map[cohort_name]
+            if not cohort_projects:
+                continue
+
+            display_name = cohort_name if cohort_name else "No Cohort"
+
+            launch_date = "TBD"
+            for p in cohort_projects:
+                raw = p.get("cohort_start_date", "")
+                if raw:
+                    launch_date = _format_launch_date(raw)
+                    break
+
+            st.markdown(
+                f'<div style="margin:2rem 0 0.25rem 0;">'
+                f'<h3 style="margin:0;color:#1B2B5E;">{display_name}</h3>'
+                f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
+                f'Expected Launch Date: {launch_date}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
+                unsafe_allow_html=True,
+            )
+
+            for project in cohort_projects:
+                _render_project_card(project)
+    else:
+        st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
+        st.markdown("---")
+        for project in projects:
+            _render_project_card(project)
 
 # ─────────────────────────────────────────────
 # INTERN PROFILE TABS
