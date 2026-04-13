@@ -241,7 +241,7 @@ STUDENT_FIELDS = {
     "whitelabel":         "Whitelabel/co-branded? (from Program Type)",
     "programming_skills": "Please describe in detail your specific skill level for different programming languages",
     "cohort_start_date":  "cohort start date",
-    "cohort_active":      "Is this cohort active? (from Cohort Date)",
+    "cohort_active":      "Is this cohort active?  (from Cohort Date)",
     "cohort_upcoming":    "Is this cohort upcoming (from Cohort Date)",
 }
 
