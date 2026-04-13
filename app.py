@@ -1529,30 +1529,45 @@ def show_interns():
     for s in students:
         s["cohort"] = extract_cohort_from_student_id(s.get("student_id", ""))
 
-    # Build cohort → start date map from student records directly
-    # (falls back to project data for consistency)
+    # Build cohort → start date maps from student records
+    # cohort_date_map: cohort → datetime (for sort order)
+    # cohort_raw_map:  cohort → raw string  (for display via _format_launch_date)
     cohort_date_map: dict = {}
+    cohort_raw_map:  dict = {}
+
+    def _parse_date_str(raw):
+        """Try multiple formats, return datetime or None."""
+        s = str(raw).strip().strip('"').strip("'")
+        for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(s.split("T")[0].strip(), "%Y-%m-%d")
+            except ValueError:
+                pass
+        for fmt in ("%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y"):
+            try:
+                return datetime.strptime(s, fmt)
+            except ValueError:
+                pass
+        return None
+
     for s in students:
         c   = s.get("cohort", "")
         raw = s.get("cohort_start_date", "")
-        if c and raw and c not in cohort_date_map:
-            date_str = str(raw).strip().strip('"').strip("'").split("T")[0].strip()
-            try:
-                cohort_date_map[c] = datetime.strptime(date_str, "%Y-%m-%d")
-                continue
-            except ValueError:
-                pass
-    # Fill any cohorts not found in student data from project data
+        if c and raw and c not in cohort_raw_map:
+            cohort_raw_map[c] = str(raw).strip().strip('"').strip("'")
+            dt = _parse_date_str(raw)
+            if dt:
+                cohort_date_map[c] = dt
+
+    # Fill sort dates for any cohort still missing from project data
     projects_all = get_projects_for_company(_get_company_unique_id())
     for p in projects_all:
         c   = p.get("cohort", "")
         raw = p.get("cohort_start_date", "")
         if c and raw and c not in cohort_date_map:
-            date_str = str(raw).strip().strip('"').strip("'").split("T")[0].strip()
-            try:
-                cohort_date_map[c] = datetime.strptime(date_str, "%Y-%m-%d")
-            except ValueError:
-                pass
+            dt = _parse_date_str(raw)
+            if dt:
+                cohort_date_map[c] = dt
 
     # Build project id → display name map from project data
     project_id_to_name: dict = {
@@ -1644,10 +1659,8 @@ def show_interns():
 
     def _render_cohort_section(cohort_name, interns):
         """Render a cohort header + project sub-groups for a list of interns."""
-        launch_date = "TBD"
-        raw_dt = cohort_date_map.get(cohort_name)
-        if raw_dt and raw_dt != datetime.max:
-            launch_date = raw_dt.strftime("%B %-d, %Y")
+        raw_str = cohort_raw_map.get(cohort_name, "")
+        launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
 
         display = cohort_name if cohort_name else "No Cohort"
         st.markdown(
@@ -1696,10 +1709,8 @@ def show_interns():
     else:
         # Specific cohort selected — show header then project sub-groups
         if selected_cohort != "All Cohorts":
-            launch_date = "TBD"
-            raw_dt = cohort_date_map.get(selected_cohort)
-            if raw_dt and raw_dt != datetime.max:
-                launch_date = raw_dt.strftime("%B %-d, %Y")
+            raw_str = cohort_raw_map.get(selected_cohort, "")
+            launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
             st.markdown(
                 f'<div style="margin:1.5rem 0 0.25rem 0;">'
                 f'<h3 style="margin:0;color:#1B2B5E;">{selected_cohort}</h3>'
