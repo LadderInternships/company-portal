@@ -320,15 +320,22 @@ st.markdown("""
         font-size: 0.85rem;
         color: #9CA3AF;
     }
-    /* Overlay button on intern card — fills the card area, transparent */
-    div[data-testid="stButton"].intern-btn > button {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        width: 100%; height: 100%;
-        opacity: 0;
+    /* Overlay button on intern card — moves button up to cover the card, transparent */
+    div[data-testid="stMarkdownContainer"]:has(.intern-row) + div[data-testid="stButton"] {
+        margin-top: -5rem;
+        position: relative;
+        z-index: 5;
+    }
+    div[data-testid="stMarkdownContainer"]:has(.intern-row) + div[data-testid="stButton"] > button {
+        opacity: 0 !important;
+        height: 5rem;
+        width: 100%;
         cursor: pointer;
         padding: 0;
         margin: 0;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
     }
     .project-subheader {
         font-size: 0.82rem;
@@ -339,11 +346,11 @@ st.markdown("""
         margin: 1.25rem 0 0.5rem 0;
     }
     .status-group-header {
-        font-size: 0.72rem;
+        font-size: 1rem;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.12em;
-        padding: 0.3rem 0.8rem;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 1.1rem;
         border-radius: 20px;
         display: inline-block;
         margin: 2rem 0 0.25rem 0;
@@ -1588,9 +1595,13 @@ def show_interns():
     def _classify_status(active_val, upcoming_val):
         a = _normalize_lookup(active_val).lower()
         u = _normalize_lookup(upcoming_val).lower()
-        if a == "active" and u in ("not upcoming", ""):
+        # "active" in the value but NOT "inactive" → Active
+        is_active   = "active" in a and "inactive" not in a
+        # "upcoming" in the value but NOT "not upcoming" → Upcoming
+        is_upcoming = "upcoming" in u and "not" not in u
+        if is_active:
             return "Active"
-        if a in ("inactive", "") and u == "upcoming":
+        if is_upcoming:
             return "Upcoming"
         return "Inactive"
 
@@ -1696,7 +1707,8 @@ def show_interns():
             f'</div>',
             unsafe_allow_html=True,
         )
-        if st.button(f"Open {name}", key=f"intern_{student['id']}", use_container_width=True):
+        # Invisible full-width button overlaid on the card via CSS
+        if st.button(" ", key=f"intern_{student['id']}", use_container_width=True):
             st.session_state.selected_intern_id = student["id"]
             st.query_params["intern"] = student["id"]
             st.rerun()
