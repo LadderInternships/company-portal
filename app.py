@@ -1174,7 +1174,12 @@ def show_projects():
     def _render_project_card(project):
         category  = project["category"] or "—"
         cohort    = project["cohort"]   or "—"
-        n_interns = project["confirmed_signups"]
+        n_interns = project["total_signups"]
+        try:
+            max_interns = int(float(str(project.get("max_interns", "") or 0)))
+        except (ValueError, TypeError):
+            max_interns = 0
+        interns_display = f"{n_interns}/{max_interns}" if max_interns else str(n_interns)
 
         wde_link = project.get("wde_link", "")
         wde_section = (
@@ -1202,7 +1207,7 @@ def show_projects():
             f'<h4 style="margin:0 0 0.4rem 0;">{project["name"]}</h4>'
             f'<p style="color:#4A5568;margin:0 0 0.4rem 0;font-size:0.88rem;">'
             f'Category: {category}&nbsp;&nbsp;|&nbsp;&nbsp;Cohort: {cohort}'
-            f'&nbsp;&nbsp;|&nbsp;&nbsp;Interns: {n_interns}'
+            f'&nbsp;&nbsp;|&nbsp;&nbsp;Assigned interns (confirmed &amp; tentative): {interns_display}'
             f'</p>'
             f'{wde_section}'
             f'{pm_html}'
@@ -1276,7 +1281,27 @@ def show_projects():
                 _render_project_card(project)
     else:
         st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
-        st.markdown("---")
+
+        # Show cohort header + launch date when a specific cohort is selected
+        if selected_cohort and selected_cohort != "All Cohorts" and projects:
+            launch_date = "TBD"
+            for p in projects:
+                raw = p.get("cohort_start_date", "")
+                if raw:
+                    launch_date = _format_launch_date(raw)
+                    break
+            st.markdown(
+                f'<div style="margin:1.5rem 0 0.25rem 0;">'
+                f'<h3 style="margin:0;color:#1B2B5E;">{selected_cohort}</h3>'
+                f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
+                f'Expected Launch Date: {launch_date}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        st.markdown(
+            '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
+            unsafe_allow_html=True,
+        )
         for project in projects:
             _render_project_card(project)
 
