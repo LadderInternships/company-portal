@@ -48,6 +48,59 @@ def verify_magic_token(token, max_age=3600):
     except (SignatureExpired, BadSignature):
         return None
 
+# ─────────────────────────────────────────────
+# PERSISTENT SESSION TOKEN  (survives server restarts)
+# ─────────────────────────────────────────────
+SESSION_TTL = 86400  # 24 hours
+
+def generate_session_token(email: str, is_preview: bool = False) -> str:
+    """Create a signed, 24-hour session token for the given email."""
+    payload = {"email": email, "preview": is_preview}
+    return get_serializer().dumps(payload, salt="session-token")
+
+def verify_session_token(token: str):
+    """
+    Return (email, is_preview) if the token is valid and not expired, else None.
+    Handles both old string payloads and new dict payloads gracefully.
+    """
+    try:
+        data = get_serializer().loads(token, salt="session-token", max_age=SESSION_TTL)
+        if isinstance(data, dict):
+            return data.get("email"), data.get("preview", False)
+        # Legacy: bare email string
+        return data, False
+    except (SignatureExpired, BadSignature):
+        return None, None
+
+def _hydrate_session(company):
+    """Populate session_state from a company dict."""
+    st.session_state.authenticated     = True
+    st.session_state.company_name      = company["name"]
+    st.session_state.company_unique_id = company["unique_id"]
+    st.session_state.company_id        = company["id"]
+    st.session_state.supervisor_name   = company["supervisor_name"]
+    st.session_state.supervisor_email  = company["supervisor_email"]
+
+def check_session_token():
+    """
+    If session_state is not authenticated but a valid ?session= token is in the
+    URL, silently re-hydrate the session.  Called once per page load in main().
+    """
+    if st.session_state.authenticated:
+        return
+    token = st.query_params.get("session", "")
+    if not token:
+        return
+    email, is_preview = verify_session_token(token)
+    if not email:
+        # Token expired or tampered — clear it so the user sees the login page cleanly
+        del st.query_params["session"]
+        return
+    company = get_company_by_email(email)
+    if company:
+        _hydrate_session(company)
+        st.session_state.is_preview = bool(is_preview)
+
 def send_magic_link(email, company_name, supervisor_name):
     resend.api_key = st.secrets["RESEND_API_KEY"]
     token = generate_magic_token(email)
@@ -675,14 +728,13 @@ def check_magic_link_token():
         if email:
             company = get_company_by_email(email)
             if company:
-                st.session_state.authenticated      = True
-                st.session_state.company_name       = company["name"]
-                st.session_state.company_unique_id  = company["unique_id"]
-                st.session_state.company_id         = company["id"]
-                st.session_state.supervisor_name    = company["supervisor_name"]
-                st.session_state.supervisor_email   = company["supervisor_email"]
-                st.session_state.is_preview         = False
+                _hydrate_session(company)
+                st.session_state.is_preview = False
+                # Issue a 24-hour session token and embed it in the URL so the
+                # session survives server restarts without requiring a new login.
+                session_tok = generate_session_token(email, is_preview=False)
                 st.query_params.clear()
+                st.query_params["session"] = session_tok
                 st.rerun()
         else:
             st.error("This login link has expired or is invalid. Please request a new one.")
@@ -775,13 +827,12 @@ def show_login_page():
                     with st.spinner("Looking up company..."):
                         company = get_company_by_email(preview_email)
                     if company:
-                        st.session_state.authenticated      = True
-                        st.session_state.company_name       = company["name"]
-                        st.session_state.company_unique_id  = company["unique_id"]
-                        st.session_state.company_id         = company["id"]
-                        st.session_state.supervisor_name    = company["supervisor_name"]
-                        st.session_state.supervisor_email   = company["supervisor_email"]
-                        st.session_state.is_preview       = True
+                        _hydrate_session(company)
+                        st.session_state.is_preview = True
+                        # Issue a session token so preview survives server restarts.
+                        # Preview sessions are also limited to 24 hours.
+                        session_tok = generate_session_token(company["supervisor_email"], is_preview=True)
+                        st.query_params["session"] = session_tok
                         st.rerun()
                     else:
                         st.error("Company not found.")
@@ -2009,7 +2060,10 @@ def show_dashboard():
     qp = st.query_params.get("nav", "")
     if qp in nav_map:
         st.session_state["nav_radio"] = nav_map[qp]
+        session_tok = st.query_params.get("session", "")
         st.query_params.clear()
+        if session_tok:
+            st.query_params["session"] = session_tok
         st.rerun()
 
     # ── Browser back button support ──
@@ -2058,15 +2112,18 @@ def show_dashboard():
             st.rerun()
 
         if st.button("🚪 Logout"):
-            st.session_state.authenticated      = False
-            st.session_state.company_name       = None
-            st.session_state.company_unique_id  = None
-            st.session_state.company_id         = None
-            st.session_state.supervisor_name    = None
-            st.session_state.supervisor_email   = None
+            st.session_state.authenticated       = False
+            st.session_state.company_name        = None
+            st.session_state.company_unique_id   = None
+            st.session_state.company_id          = None
+            st.session_state.supervisor_name     = None
+            st.session_state.supervisor_email    = None
             st.session_state.is_preview          = False
             st.session_state.selected_intern_id  = None
             st.session_state.selected_project_id = None
+            # Invalidate the session token so the URL no longer re-authenticates
+            if "session" in st.query_params:
+                del st.query_params["session"]
             st.rerun()
 
     if st.session_state.is_preview:
@@ -2100,7 +2157,8 @@ def show_dashboard():
 # MAIN
 # ─────────────────────────────────────────────
 def main():
-    check_magic_link_token()
+    check_magic_link_token()   # one-time magic-link redemption (sets ?session=)
+    check_session_token()      # silently re-hydrates session on every page load
     if not st.session_state.authenticated:
         show_login_page()
     else:
