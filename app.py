@@ -977,6 +977,8 @@ def show_projects():
         if project and intern:
             if st.button(f"← Back to {project['name']}"):
                 st.session_state.selected_intern_id = None
+                if "intern" in st.query_params:
+                    del st.query_params["intern"]
                 st.rerun()
             preferred = intern["preferred_name"]
             st.markdown(f"## {intern['full_name']}")
@@ -997,6 +999,10 @@ def show_projects():
             if st.button("← Back to Projects"):
                 st.session_state.selected_project_id = None
                 st.session_state.selected_intern_id  = None
+                if "project" in st.query_params:
+                    del st.query_params["project"]
+                if "intern" in st.query_params:
+                    del st.query_params["intern"]
                 st.rerun()
 
             st.markdown(f'<p class="main-header">{project["name"]}</p>', unsafe_allow_html=True)
@@ -1104,6 +1110,7 @@ def show_projects():
                     with col1:
                         if st.button(s["full_name"], key=f"proj_intern_{s['id']}"):
                             st.session_state.selected_intern_id = s["id"]
+                            st.query_params["intern"] = s["id"]
                             st.rerun()
                     with col2:
                         st.markdown(_status_badge(s["status_for_company"]), unsafe_allow_html=True)
@@ -1177,6 +1184,9 @@ def show_projects():
         if st.button("View Project →", key=f"open_project_{project['id']}"):
             st.session_state.selected_project_id = project["id"]
             st.session_state.selected_intern_id  = None
+            st.query_params["project"] = project["id"]
+            if "intern" in st.query_params:
+                del st.query_params["intern"]
             st.rerun()
         st.markdown("---")
 
@@ -1344,6 +1354,8 @@ def show_interns():
         if selected:
             if st.button("← Back to Intern List"):
                 st.session_state.selected_intern_id = None
+                if "intern" in st.query_params:
+                    del st.query_params["intern"]
                 st.rerun()
 
             preferred = selected["preferred_name"]
@@ -1419,6 +1431,7 @@ def show_interns():
         with col1:
             if st.button(student["full_name"], key=f"intern_{student['id']}", use_container_width=True):
                 st.session_state.selected_intern_id = student["id"]
+                st.query_params["intern"] = student["id"]
                 st.rerun()
         with col2:
             tz = student["timezone"] or "—"
@@ -1687,6 +1700,7 @@ def show_payments():
                 if st.button(f"📁 {proj['name']}", key=f"proj_link_{p['id']}_{proj['id']}"):
                     st.session_state.selected_project_id = proj["id"]
                     st.session_state["nav_radio"] = "📁 Your Projects"
+                    st.query_params["project"] = proj["id"]
                     st.rerun()
 
         # ── Student counts ───────────────────────────────────────────
@@ -1771,6 +1785,23 @@ def show_dashboard():
         st.query_params.clear()
         st.rerun()
 
+    # ── Browser back button support ──
+    # URL params encode the current drill-down state. When the browser goes back,
+    # Streamlit reruns with the previous (shorter) URL, and we detect the mismatch
+    # between the URL and session state to clear the stale drill-down state.
+    qp_project = st.query_params.get("project", "")
+    qp_intern  = st.query_params.get("intern",  "")
+
+    if not qp_project and st.session_state.get("selected_project_id"):
+        st.session_state.selected_project_id = None
+        st.session_state.selected_intern_id  = None
+    if not qp_intern and st.session_state.get("selected_intern_id"):
+        st.session_state.selected_intern_id = None
+    if qp_project and st.session_state.get("selected_project_id") != qp_project:
+        st.session_state.selected_project_id = qp_project
+    if qp_intern and st.session_state.get("selected_intern_id") != qp_intern:
+        st.session_state.selected_intern_id = qp_intern
+
     with st.sidebar:
         st.markdown(
         '<img src="data:image/png;base64,{}" width="55" style="filter: brightness(0) invert(1); margin-bottom: 0.5rem;">'.format(
@@ -1817,6 +1848,15 @@ def show_dashboard():
             f'Viewing as {st.session_state.company_name}</div>',
             unsafe_allow_html=True
         )
+
+    # Clear URL nav params when switching away from their relevant tabs
+    if view != "📁 Your Projects" and st.query_params.get("project"):
+        del st.query_params["project"]
+        st.session_state.selected_project_id = None
+        st.session_state.selected_intern_id  = None
+    if view not in ("📁 Your Projects", "👥 Your Interns") and st.query_params.get("intern"):
+        del st.query_params["intern"]
+        st.session_state.selected_intern_id = None
 
     if view == "🏢 Company Dashboard":
         show_company_overview()
