@@ -320,22 +320,15 @@ st.markdown("""
         font-size: 0.85rem;
         color: #9CA3AF;
     }
-    /* Overlay button on intern card — moves button up to cover the card, transparent */
-    div[data-testid="stMarkdownContainer"]:has(.intern-row) + div[data-testid="stButton"] {
-        margin-top: -5rem;
-        position: relative;
-        z-index: 5;
+    /* Intern card link — remove default anchor styling */
+    a.intern-card-link {
+        text-decoration: none;
+        display: block;
+        color: inherit;
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-row) + div[data-testid="stButton"] > button {
-        opacity: 0 !important;
-        height: 5rem;
-        width: 100%;
-        cursor: pointer;
-        padding: 0;
-        margin: 0;
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+    a.intern-card-link:hover .intern-row {
+        background: #F5F7FF;
+        box-shadow: 0 4px 12px rgba(27,43,94,0.10);
     }
     .project-subheader {
         font-size: 0.82rem;
@@ -1723,26 +1716,27 @@ def show_interns():
     # ── Render helpers ────────────────────────────────────────────────
 
     def _render_intern_card(student):
-        """Full-width clickable card — entire surface triggers drill-down."""
+        """Single <a href> card — no button, no duplicate element."""
         meetings = parse_meetings_count(student.get("meetings_count", 0))
         tz       = student.get("timezone") or "—"
         grade    = student.get("grade") or "—"
         name     = student.get("full_name") or "—"
+        sid      = student["id"]
+        # Preserve session token so login survives navigation
+        session_token = st.query_params.get("session", "")
+        href = f"?session={session_token}&intern={sid}" if session_token else f"?intern={sid}"
         st.markdown(
+            f'<a href="{href}" class="intern-card-link">'
             f'<div class="intern-row">'
             f'  <div>'
             f'    <div class="intern-name">{name}</div>'
             f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
             f'  </div>'
             f'  <div class="intern-arrow">→</div>'
-            f'</div>',
+            f'</div>'
+            f'</a>',
             unsafe_allow_html=True,
         )
-        # Invisible full-width button overlaid on the card via CSS
-        if st.button(" ", key=f"intern_{student['id']}", use_container_width=True):
-            st.session_state.selected_intern_id = student["id"]
-            st.query_params["intern"] = student["id"]
-            st.rerun()
 
     def _render_project_group(project_name, interns):
         label      = project_name if project_name else "Unassigned Project"
