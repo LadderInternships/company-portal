@@ -241,6 +241,8 @@ STUDENT_FIELDS = {
     "whitelabel":         "Whitelabel/co-branded? (from Program Type)",
     "programming_skills": "Please describe in detail your specific skill level for different programming languages",
     "cohort_start_date":  "cohort start date",
+    "cohort_active":      "Is this cohort active? (from Cohort Date)",
+    "cohort_upcoming":    "Is this cohort upcoming (from Cohort Date)",
 }
 
 # ─────────────────────────────────────────────
@@ -318,6 +320,16 @@ st.markdown("""
         font-size: 0.85rem;
         color: #9CA3AF;
     }
+    /* Overlay button on intern card — fills the card area, transparent */
+    div[data-testid="stButton"].intern-btn > button {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100%; height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        padding: 0;
+        margin: 0;
+    }
     .project-subheader {
         font-size: 0.82rem;
         font-weight: 700;
@@ -326,6 +338,19 @@ st.markdown("""
         color: #6B7280;
         margin: 1.25rem 0 0.5rem 0;
     }
+    .status-group-header {
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        display: inline-block;
+        margin: 2rem 0 0.25rem 0;
+    }
+    .status-active   { background: #DCFCE7; color: #15803D; }
+    .status-upcoming { background: #EEF2FF; color: #3730A3; }
+    .status-inactive { background: #F3F4F6; color: #6B7280; }
     .preview-banner {
         background: #EEF2FF;
         border: 1px solid #1B2B5E;
@@ -573,6 +598,8 @@ def get_students_for_company(company_name):
                 "whitelabel":           f_str.get(STUDENT_FIELDS["whitelabel"], ""),
                 "programming_skills":   f.get(STUDENT_FIELDS["programming_skills"], ""),
                 "cohort_start_date":    f_str.get(STUDENT_FIELDS["cohort_start_date"], ""),
+                "cohort_active":        f_str.get(STUDENT_FIELDS["cohort_active"], ""),
+                "cohort_upcoming":      f_str.get(STUDENT_FIELDS["cohort_upcoming"], ""),
             })
         return students
     except Exception as e:
@@ -1525,24 +1552,18 @@ def show_interns():
             return
 
     # ── Intern list ──
-    # Attach cohort to each student from their student_id field
+    # Attach cohort from student_id field
     for s in students:
         s["cohort"] = extract_cohort_from_student_id(s.get("student_id", ""))
 
-    # Build cohort → start date maps from student records
-    # cohort_date_map: cohort → datetime (for sort order)
-    # cohort_raw_map:  cohort → raw string  (for display via _format_launch_date)
-    cohort_date_map: dict = {}
-    cohort_raw_map:  dict = {}
-
+    # ── Date parsing helper ───────────────────────────────────────────
     def _parse_date_str(raw):
         """Try multiple formats, return datetime or None."""
         s = str(raw).strip().strip('"').strip("'")
-        for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%d"):
-            try:
-                return datetime.strptime(s.split("T")[0].strip(), "%Y-%m-%d")
-            except ValueError:
-                pass
+        try:
+            return datetime.strptime(s.split("T")[0].strip(), "%Y-%m-%d")
+        except ValueError:
+            pass
         for fmt in ("%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y"):
             try:
                 return datetime.strptime(s, fmt)
@@ -1550,16 +1571,47 @@ def show_interns():
                 pass
         return None
 
-    for s in students:
-        c   = s.get("cohort", "")
-        raw = s.get("cohort_start_date", "")
-        if c and raw and c not in cohort_raw_map:
-            cohort_raw_map[c] = str(raw).strip().strip('"').strip("'")
-            dt = _parse_date_str(raw)
-            if dt:
-                cohort_date_map[c] = dt
+    # ── Build per-cohort metadata from student records ────────────────
+    # cohort_date_map: cohort name → datetime  (for sort)
+    # cohort_raw_map:  cohort name → raw string (for display)
+    # cohort_status:   cohort name → "Active" | "Upcoming" | "Inactive"
+    cohort_date_map: dict = {}
+    cohort_raw_map:  dict = {}
+    cohort_status:   dict = {}
 
-    # Fill sort dates for any cohort still missing from project data
+    def _normalize_lookup(val):
+        """Airtable lookup fields come back as lists or strings — normalise to str."""
+        if isinstance(val, list):
+            val = val[0] if val else ""
+        return str(val).strip() if val else ""
+
+    def _classify_status(active_val, upcoming_val):
+        a = _normalize_lookup(active_val).lower()
+        u = _normalize_lookup(upcoming_val).lower()
+        if a == "active" and u in ("not upcoming", ""):
+            return "Active"
+        if a in ("inactive", "") and u == "upcoming":
+            return "Upcoming"
+        return "Inactive"
+
+    for s in students:
+        c = s.get("cohort", "")
+        if not c:
+            continue
+        if c not in cohort_raw_map:
+            raw = s.get("cohort_start_date", "")
+            if raw:
+                cohort_raw_map[c] = str(raw).strip().strip('"').strip("'")
+                dt = _parse_date_str(raw)
+                if dt:
+                    cohort_date_map[c] = dt
+        if c not in cohort_status:
+            cohort_status[c] = _classify_status(
+                s.get("cohort_active", ""),
+                s.get("cohort_upcoming", ""),
+            )
+
+    # Fill sort dates from project data for cohorts still missing a date
     projects_all = get_projects_for_company(_get_company_unique_id())
     for p in projects_all:
         c   = p.get("cohort", "")
@@ -1569,13 +1621,14 @@ def show_interns():
             if dt:
                 cohort_date_map[c] = dt
 
-    # Build project id → display name map from project data
+    # Build project id → display name map
     project_id_to_name: dict = {
         p["id"]: p["name"] for p in projects_all if p.get("name")
     }
 
+    STATUS_ORDER = {"Active": 0, "Upcoming": 1, "Inactive": 2}
+
     def _get_project_display_name(student):
-        """Return the project name by looking up record IDs against project data."""
         pa = student.get("project_assigned", "")
         if isinstance(pa, list):
             for pid in pa:
@@ -1584,19 +1637,23 @@ def show_interns():
                     return name
         return ""
 
-    intern_cohort_names = set(s["cohort"] for s in students if s["cohort"])
-    cohorts = sorted(
-        intern_cohort_names,
-        key=lambda c: cohort_date_map.get(c, datetime.max)
+    # ── Filter controls ───────────────────────────────────────────────
+    all_cohort_names = set(s["cohort"] for s in students if s["cohort"])
+    cohorts_sorted = sorted(
+        all_cohort_names,
+        key=lambda c: (
+            STATUS_ORDER.get(cohort_status.get(c, "Inactive"), 2),
+            cohort_date_map.get(c, datetime.max),
+        )
     )
 
     filtered = students
     selected_cohort = "All Cohorts"
 
-    if len(cohorts) > 1:
+    if len(cohorts_sorted) > 1:
         col_f1, col_f2 = st.columns([2, 3])
         with col_f1:
-            cohort_options = ["All Cohorts"] + cohorts
+            cohort_options = ["All Cohorts"] + cohorts_sorted
             selected_cohort = st.selectbox("Filter by cohort", cohort_options, key="intern_cohort_filter")
             if selected_cohort != "All Cohorts":
                 filtered = [s for s in students if s["cohort"] == selected_cohort]
@@ -1621,50 +1678,56 @@ def show_interns():
     _cohort_label = f" in {selected_cohort}" if selected_cohort != "All Cohorts" else " assigned to your company"
     st.markdown(f"**{len(filtered)}** intern{'s' if len(filtered) != 1 else ''}{_cohort_label}")
 
-    # ── Helpers ──────────────────────────────────────────────────────
+    # ── Render helpers ────────────────────────────────────────────────
 
     def _render_intern_card(student):
-        """Render a modern clickable card row for an intern."""
-        meetings  = parse_meetings_count(student.get("meetings_count", 0))
-        tz        = student.get("timezone") or "—"
-        grade     = student.get("grade") or "—"
-        name      = student.get("full_name") or "—"
-        col_card, col_btn = st.columns([5, 1])
-        with col_card:
-            st.markdown(
-                f'<div class="intern-row">'
-                f'  <div>'
-                f'    <div class="intern-name">{name}</div>'
-                f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
-                f'  </div>'
-                f'  <div class="intern-arrow">→</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with col_btn:
-            if st.button("View →", key=f"intern_{student['id']}", use_container_width=True):
-                st.session_state.selected_intern_id = student["id"]
-                st.query_params["intern"] = student["id"]
-                st.rerun()
+        """Full-width clickable card — entire surface triggers drill-down."""
+        meetings = parse_meetings_count(student.get("meetings_count", 0))
+        tz       = student.get("timezone") or "—"
+        grade    = student.get("grade") or "—"
+        name     = student.get("full_name") or "—"
+        st.markdown(
+            f'<div class="intern-row">'
+            f'  <div>'
+            f'    <div class="intern-name">{name}</div>'
+            f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
+            f'  </div>'
+            f'  <div class="intern-arrow">→</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button(f"Open {name}", key=f"intern_{student['id']}", use_container_width=True):
+            st.session_state.selected_intern_id = student["id"]
+            st.query_params["intern"] = student["id"]
+            st.rerun()
 
     def _render_project_group(project_name, interns):
-        """Render a project sub-header and its interns, sorted alphabetically."""
-        label = project_name if project_name else "Unassigned Project"
+        label      = project_name if project_name else "Unassigned Project"
+        count      = len(interns)
+        count_str  = f"{count} intern{'s' if count != 1 else ''}"
         st.markdown(
-            f'<p class="project-subheader">📁 {label}</p>',
+            f'<p class="project-subheader">📁 {label} &nbsp;<span style="font-weight:400;text-transform:none;letter-spacing:0;">({count_str})</span></p>',
             unsafe_allow_html=True,
         )
         for student in sorted(interns, key=lambda s: (s.get("full_name") or "").lower()):
             _render_intern_card(student)
 
-    def _render_cohort_section(cohort_name, interns):
-        """Render a cohort header + project sub-groups for a list of interns."""
-        raw_str = cohort_raw_map.get(cohort_name, "")
-        launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
+    def _render_by_project(interns):
+        proj_map: dict = {}
+        for s in interns:
+            proj = _get_project_display_name(s)
+            proj_map.setdefault(proj, []).append(s)
+        named_projs   = sorted([k for k in proj_map if k],  key=str.lower)
+        unnamed_projs = [k for k in proj_map if not k]
+        for proj in named_projs + unnamed_projs:
+            _render_project_group(proj, proj_map[proj])
 
-        display = cohort_name if cohort_name else "No Cohort"
+    def _render_cohort_section(cohort_name, interns):
+        raw_str     = cohort_raw_map.get(cohort_name, "")
+        launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
+        display     = cohort_name if cohort_name else "No Cohort"
         st.markdown(
-            f'<div style="margin:2rem 0 0.25rem 0;">'
+            f'<div style="margin:1.5rem 0 0.25rem 0;">'
             f'<h3 style="margin:0;color:#1B2B5E;">{display}</h3>'
             f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
             f'Expected Launch Date: {launch_date}</p>'
@@ -1677,42 +1740,60 @@ def show_interns():
         )
         _render_by_project(interns)
 
-    def _render_by_project(interns):
-        """Group interns by project and render each group, sorted alpha by project name."""
-        proj_map: dict = {}
-        for s in interns:
-            proj = _get_project_display_name(s)
-            proj_map.setdefault(proj, []).append(s)
+    STATUS_LABELS = {
+        "Active":   ("Active",   "status-active"),
+        "Upcoming": ("Upcoming", "status-upcoming"),
+        "Inactive": ("Inactive", "status-inactive"),
+    }
 
-        # Named projects sorted alphabetically; unnamed at bottom
-        named_projs   = sorted([k for k in proj_map if k],  key=str.lower)
-        unnamed_projs = [k for k in proj_map if not k]
-        for proj in named_projs + unnamed_projs:
-            _render_project_group(proj, proj_map[proj])
+    # ── Render ────────────────────────────────────────────────────────
 
-    # ── Render ───────────────────────────────────────────────────────
-
-    if selected_cohort == "All Cohorts" and len(cohorts) > 1:
-        # Cohort → Project → Intern hierarchy
+    if selected_cohort == "All Cohorts" and len(cohorts_sorted) > 1:
+        # Group students by cohort
         cohort_map: dict = {}
         for s in filtered:
             key = s["cohort"] or ""
             cohort_map.setdefault(key, []).append(s)
 
-        named_cohorts   = [c for c in cohorts if c in cohort_map]
-        unnamed_cohorts = [c for c in cohort_map if not c]
-        for cohort_name in named_cohorts + unnamed_cohorts:
-            group = cohort_map.get(cohort_name, [])
-            if not group:
+        # Group cohorts by status
+        status_cohort_map: dict = {"Active": [], "Upcoming": [], "Inactive": []}
+        for c in cohorts_sorted:
+            if c in cohort_map:
+                status_cohort_map[cohort_status.get(c, "Inactive")].append(c)
+        # No-cohort interns → Inactive
+        if "" in cohort_map:
+            status_cohort_map["Inactive"].append("")
+
+        for status in ("Active", "Upcoming", "Inactive"):
+            cohort_list = status_cohort_map[status]
+            if not cohort_list:
                 continue
-            _render_cohort_section(cohort_name, group)
+            label, css_class = STATUS_LABELS[status]
+            st.markdown(
+                f'<div><span class="status-group-header {css_class}">{label}</span></div>',
+                unsafe_allow_html=True,
+            )
+            for cohort_name in cohort_list:
+                group = cohort_map.get(cohort_name, [])
+                if not group:
+                    continue
+                _render_cohort_section(cohort_name, group)
+
     else:
         # Specific cohort selected — show header then project sub-groups
         if selected_cohort != "All Cohorts":
-            raw_str = cohort_raw_map.get(selected_cohort, "")
+            raw_str     = cohort_raw_map.get(selected_cohort, "")
             launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
+            status      = cohort_status.get(selected_cohort, "Inactive")
+            label, css_class = STATUS_LABELS[status]
             st.markdown(
-                f'<div style="margin:1.5rem 0 0.25rem 0;">'
+                f'<div style="margin:1.5rem 0 0;">'
+                f'<span class="status-group-header {css_class}" style="margin:0 0 0.5rem 0;">{label}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f'<div style="margin:0.75rem 0 0.25rem 0;">'
                 f'<h3 style="margin:0;color:#1B2B5E;">{selected_cohort}</h3>'
                 f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
                 f'Expected Launch Date: {launch_date}</p>'
