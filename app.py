@@ -358,6 +358,37 @@ st.markdown("""
     .status-active   { background: #DCFCE7; color: #15803D; }
     .status-upcoming { background: #EEF2FF; color: #3730A3; }
     .status-inactive { background: #F3F4F6; color: #6B7280; }
+    /* Status group expander styling */
+    div[data-testid="stMarkdownContainer"]:has(.status-exp-marker-active)
+        + div[data-testid="stExpander"] details summary {
+        background: #DCFCE7 !important;
+        color: #15803D !important;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+        padding: 0.6rem 1rem;
+    }
+    div[data-testid="stMarkdownContainer"]:has(.status-exp-marker-upcoming)
+        + div[data-testid="stExpander"] details summary {
+        background: #EEF2FF !important;
+        color: #3730A3 !important;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+        padding: 0.6rem 1rem;
+    }
+    div[data-testid="stMarkdownContainer"]:has(.status-exp-marker-inactive)
+        + div[data-testid="stExpander"] details summary {
+        background: #F3F4F6 !important;
+        color: #6B7280 !important;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+        padding: 0.6rem 1rem;
+    }
     .preview-banner {
         background: #EEF2FF;
         border: 1px solid #1B2B5E;
@@ -1776,20 +1807,29 @@ def show_interns():
         if "" in cohort_map:
             status_cohort_map["Inactive"].append("")
 
+        MARKER_CLASS = {
+            "Active":   "status-exp-marker-active",
+            "Upcoming": "status-exp-marker-upcoming",
+            "Inactive": "status-exp-marker-inactive",
+        }
+        EMOJI = {"Active": "🟢", "Upcoming": "🔵", "Inactive": "⚫"}
+
         for status in ("Active", "Upcoming", "Inactive"):
             cohort_list = status_cohort_map[status]
             if not cohort_list:
                 continue
-            label, css_class = STATUS_LABELS[status]
-            st.markdown(
-                f'<div><span class="status-group-header {css_class}">{label}</span></div>',
-                unsafe_allow_html=True,
-            )
-            for cohort_name in cohort_list:
-                group = cohort_map.get(cohort_name, [])
-                if not group:
-                    continue
-                _render_cohort_section(cohort_name, group)
+            total_interns = sum(len(cohort_map.get(c, [])) for c in cohort_list)
+            intern_str    = f"{total_interns} intern{'s' if total_interns != 1 else ''}"
+            exp_label     = f"{EMOJI[status]}  {status.upper()}  ·  {intern_str}"
+            # Invisible marker div so CSS can colour the next expander
+            marker_cls    = MARKER_CLASS[status]
+            st.markdown(f'<div class="{marker_cls}" style="display:none;"></div>', unsafe_allow_html=True)
+            with st.expander(exp_label, expanded=(status == "Active")):
+                for cohort_name in cohort_list:
+                    group = cohort_map.get(cohort_name, [])
+                    if not group:
+                        continue
+                    _render_cohort_section(cohort_name, group)
 
     else:
         # Specific cohort selected — show header then project sub-groups
