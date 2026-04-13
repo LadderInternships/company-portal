@@ -241,7 +241,6 @@ STUDENT_FIELDS = {
     "whitelabel":         "Whitelabel/co-branded? (from Program Type)",
     "programming_skills": "Please describe in detail your specific skill level for different programming languages",
     "cohort_start_date":  "cohort start date",
-    "project_name":       "Project Assigned",
 }
 
 # ─────────────────────────────────────────────
@@ -574,7 +573,6 @@ def get_students_for_company(company_name):
                 "whitelabel":           f_str.get(STUDENT_FIELDS["whitelabel"], ""),
                 "programming_skills":   f.get(STUDENT_FIELDS["programming_skills"], ""),
                 "cohort_start_date":    f_str.get(STUDENT_FIELDS["cohort_start_date"], ""),
-                "project_name":         f_str.get(STUDENT_FIELDS["project_name"], ""),
             })
         return students
     except Exception as e:
@@ -1562,14 +1560,7 @@ def show_interns():
     }
 
     def _get_project_display_name(student):
-        """Return the best available project name for an intern."""
-        # Try string field first (already resolved display name)
-        pn = student.get("project_name", "")
-        if isinstance(pn, list):
-            pn = pn[0] if pn else ""
-        if pn:
-            return str(pn).strip()
-        # Fall back to resolving via project record IDs
+        """Return the project name by looking up record IDs against project data."""
         pa = student.get("project_assigned", "")
         if isinstance(pa, list):
             for pid in pa:
@@ -1623,21 +1614,23 @@ def show_interns():
         tz        = student.get("timezone") or "—"
         grade     = student.get("grade") or "—"
         name      = student.get("full_name") or "—"
-        st.markdown(
-            f'<div class="intern-row">'
-            f'  <div>'
-            f'    <div class="intern-name">{name}</div>'
-            f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
-            f'  </div>'
-            f'  <div class="intern-arrow">→</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        # Invisible button overlay — same size as card, triggers drill-down
-        if st.button("Open", key=f"intern_{student['id']}", use_container_width=True, label_visibility="hidden"):
-            st.session_state.selected_intern_id = student["id"]
-            st.query_params["intern"] = student["id"]
-            st.rerun()
+        col_card, col_btn = st.columns([5, 1])
+        with col_card:
+            st.markdown(
+                f'<div class="intern-row">'
+                f'  <div>'
+                f'    <div class="intern-name">{name}</div>'
+                f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
+                f'  </div>'
+                f'  <div class="intern-arrow">→</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with col_btn:
+            if st.button("View →", key=f"intern_{student['id']}", use_container_width=True):
+                st.session_state.selected_intern_id = student["id"]
+                st.query_params["intern"] = student["id"]
+                st.rerun()
 
     def _render_project_group(project_name, interns):
         """Render a project sub-header and its interns, sorted alphabetically."""
