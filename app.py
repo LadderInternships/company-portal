@@ -1722,19 +1722,17 @@ def show_interns():
         grade    = student.get("grade") or "—"
         name     = student.get("full_name") or "—"
         sid      = student["id"]
-        # Preserve session token so login survives navigation
+        # onclick on the div avoids Streamlit intercepting <a href> as an external link
         session_token = st.query_params.get("session", "")
-        href = f"?session={session_token}&intern={sid}" if session_token else f"?intern={sid}"
+        dest = f"?session={session_token}&intern={sid}" if session_token else f"?intern={sid}"
         st.markdown(
-            f'<a href="{href}" class="intern-card-link">'
-            f'<div class="intern-row">'
+            f'<div class="intern-row" style="cursor:pointer;" onclick="window.location.href=\'{dest}\'">'
             f'  <div>'
             f'    <div class="intern-name">{name}</div>'
             f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
             f'  </div>'
             f'  <div class="intern-arrow">→</div>'
-            f'</div>'
-            f'</a>',
+            f'</div>',
             unsafe_allow_html=True,
         )
 
@@ -2213,6 +2211,9 @@ def show_dashboard():
         st.session_state.selected_project_id = qp_project
     if qp_intern and st.session_state.get("selected_intern_id") != qp_intern:
         st.session_state.selected_intern_id = qp_intern
+    # Force sidebar to Your Interns tab when an intern ID is in the URL
+    if qp_intern:
+        st.session_state["nav_radio"] = "👥 Your Interns"
 
     with st.sidebar:
         st.markdown(
