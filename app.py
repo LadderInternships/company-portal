@@ -735,6 +735,11 @@ def parse_weekly_notes(notes_text):
     """Parse the Manager Weekly Submissions rollup text into [{date, notes}]."""
     if not notes_text:
         return []
+    # Airtable lookup/rollup fields can return a list — join to a single string
+    if isinstance(notes_text, list):
+        notes_text = "\n,".join(str(x) for x in notes_text if x)
+    if not notes_text:
+        return []
     # Split entries on newline + comma (Airtable rollup separator)
     raw_entries = re.split(r'\n\s*,\s*', notes_text.strip())
     date_pattern = re.compile(
