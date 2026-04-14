@@ -291,44 +291,49 @@ st.markdown("""
         font-size: 0.78rem;
         margin: 2px;
     }
-    .intern-row {
-        background: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 0.85rem 1.25rem;
+    /* ── Intern card buttons ─────────────────────────────────────────── */
+    /* The hidden marker collapses to nothing */
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker) {
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    /* The button that immediately follows the marker becomes the card */
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] {
         margin-bottom: 0.6rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-        transition: box-shadow 0.15s ease, background 0.15s ease;
     }
-    .intern-row:hover {
-        background: #F5F7FF;
-        box-shadow: 0 4px 12px rgba(27,43,94,0.10);
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 12px !important;
+        padding: 0.85rem 1.25rem !important;
+        text-align: left !important;
+        color: #1B2B5E !important;
+        font-weight: 400 !important;
+        line-height: 1.5 !important;
+        transition: box-shadow 0.15s ease, background 0.15s ease !important;
     }
-    .intern-row .intern-name {
-        font-weight: 600;
-        font-size: 0.97rem;
-        color: #1B2B5E;
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button:hover {
+        background: #F5F7FF !important;
+        box-shadow: 0 4px 12px rgba(27,43,94,0.10) !important;
+        border-color: #E5E7EB !important;
+        color: #1B2B5E !important;
     }
-    .intern-row .intern-meta {
-        font-size: 0.82rem;
-        color: #6B7280;
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button p:first-child {
+        font-weight: 600 !important;
+        font-size: 0.97rem !important;
+        margin-bottom: 0.15rem !important;
     }
-    .intern-row .intern-arrow {
-        font-size: 0.85rem;
-        color: #9CA3AF;
-    }
-    /* Intern card link — remove default anchor styling */
-    a.intern-card-link {
-        text-decoration: none;
-        display: block;
-        color: inherit;
-    }
-    a.intern-card-link:hover .intern-row {
-        background: #F5F7FF;
-        box-shadow: 0 4px 12px rgba(27,43,94,0.10);
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button p:last-child {
+        font-size: 0.82rem !important;
+        color: #6B7280 !important;
+        font-weight: 400 !important;
     }
     .project-subheader {
         font-size: 0.82rem;
@@ -1716,25 +1721,22 @@ def show_interns():
     # ── Render helpers ────────────────────────────────────────────────
 
     def _render_intern_card(student):
-        """Single <a href> card — no button, no duplicate element."""
+        """One st.button styled as a card via CSS — single element, fully clickable."""
         meetings = parse_meetings_count(student.get("meetings_count", 0))
         tz       = student.get("timezone") or "—"
         grade    = student.get("grade") or "—"
         name     = student.get("full_name") or "—"
         sid      = student["id"]
-        # onclick on the div avoids Streamlit intercepting <a href> as an external link
-        session_token = st.query_params.get("session", "")
-        dest = f"?session={session_token}&intern={sid}" if session_token else f"?intern={sid}"
-        st.markdown(
-            f'<div class="intern-row" style="cursor:pointer;" onclick="window.location.href=\'{dest}\'">'
-            f'  <div>'
-            f'    <div class="intern-name">{name}</div>'
-            f'    <div class="intern-meta">🌍 {tz}&nbsp;&nbsp;·&nbsp;&nbsp;Grade {grade}&nbsp;&nbsp;·&nbsp;&nbsp;📅 {meetings} meeting{"s" if meetings != 1 else ""}</div>'
-            f'  </div>'
-            f'  <div class="intern-arrow">→</div>'
-            f'</div>',
-            unsafe_allow_html=True,
+        # Hidden marker → CSS targets the very next button as an intern card
+        st.markdown('<span class="intern-btn-marker"></span>', unsafe_allow_html=True)
+        label = (
+            f"**{name}**\n\n"
+            f"🌍 {tz} · Grade {grade} · 📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
         )
+        if st.button(label, key=f"intern_{sid}", use_container_width=True):
+            st.session_state.selected_intern_id = sid
+            st.query_params["intern"] = sid
+            st.rerun()
 
     def _render_project_group(project_name, interns):
         label      = project_name if project_name else "Unassigned Project"
