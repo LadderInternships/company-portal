@@ -331,10 +331,11 @@ st.markdown("""
         color: #1B2B5E !important;
     }
     div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button p {
+        + div[data-testid="stButton"] > button * {
         text-align: left !important;
         width: 100% !important;
         margin: 0 !important;
+        display: block !important;
     }
     div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
         + div[data-testid="stButton"] > button p:first-child {
@@ -1162,8 +1163,9 @@ def show_projects():
                 st.caption(f"Goes by: {preferred}")
             st.markdown("---")
             tab1, tab2 = st.tabs(["🎓 Background", "📋 Meeting Activity"])
+            project_id_to_name = {p["id"]: p["name"] for p in projects if p.get("name")}
             with tab1:
-                show_intern_background(intern)
+                show_intern_background(intern, project_id_to_name)
             with tab2:
                 show_intern_meetings(intern)
             return
@@ -1474,7 +1476,21 @@ def show_projects():
 # ─────────────────────────────────────────────
 # INTERN PROFILE TABS
 # ─────────────────────────────────────────────
-def show_intern_background(student):
+def show_intern_background(student, project_id_to_name: dict = None):
+    # Resolve cohort name from student_id
+    cohort_name = extract_cohort_from_student_id(student.get("student_id", "")) or "Not specified"
+
+    # Resolve project name from linked record IDs
+    project_name = "Not specified"
+    pa = student.get("project_assigned", "")
+    if project_id_to_name and pa:
+        ids = pa if isinstance(pa, list) else [pa]
+        for pid in ids:
+            name = project_id_to_name.get(str(pid), "")
+            if name:
+                project_name = name
+                break
+
     st.markdown("### Intern Background")
     col1, col2 = st.columns(2)
     with col1:
@@ -1487,10 +1503,10 @@ def show_intern_background(student):
     with col2:
         st.markdown("**Program Type**")
         st.markdown(student["program_type"] or "Not specified")
-        st.markdown("**Cohort Date**")
-        st.markdown(student.get("cohort_date") or "Not specified")
+        st.markdown("**Cohort**")
+        st.markdown(cohort_name)
         st.markdown("**Project Assigned**")
-        st.markdown(student.get("project_assigned") or "Not specified")
+        st.markdown(project_name)
         st.markdown("**Email**")
         st.markdown(student["email"] or "Not specified")
 
@@ -1564,6 +1580,12 @@ def show_interns():
         st.info("No interns have been assigned to your company yet.")
         return
 
+    # Build project lookup early — needed by both drill-down and list views
+    _projects_all = get_projects_for_company(_get_company_unique_id())
+    _project_id_to_name: dict = {
+        p["id"]: p["name"] for p in _projects_all if p.get("name")
+    }
+
     # ── Intern profile drill-down ──
     if st.session_state.selected_intern_id:
         selected = next(
@@ -1595,7 +1617,7 @@ def show_interns():
                 "📋 Meeting Activity",
             ])
             with tab1:
-                show_intern_background(selected)
+                show_intern_background(selected, _project_id_to_name)
             with tab2:
                 show_intern_meetings(selected)
             return
