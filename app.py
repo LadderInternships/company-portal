@@ -544,12 +544,19 @@ def get_projects_for_company(company_name):
             user_locale="en-us",
             time_zone="America/New_York",
         )
+        def _is_checked(val):
+            """Handle checkbox values whether pyairtable returns bool or string."""
+            if isinstance(val, bool):
+                return val
+            if val is None or val == "":
+                return False
+            return str(val).strip().lower() == "true"
+
         projects = []
         for r in records:
             f = r["fields"]
-            # With cell_format="string", checkboxes return "true"/"false" strings
             week_data = {
-                f"week_{i}": f.get(PROJECT_FIELDS[f"week_{i}"], "").lower() == "true"
+                f"week_{i}": _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"]))
                 for i in range(1, 9)
             }
             # confirmed_signups comes back as a string; coerce safely
