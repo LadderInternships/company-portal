@@ -324,6 +324,12 @@ st.markdown("""
         color: #1B2B5E !important;
     }
     div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button p {
+        text-align: left !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
         + div[data-testid="stButton"] > button p:first-child {
         font-weight: 600 !important;
         font-size: 0.97rem !important;
