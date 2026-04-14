@@ -311,10 +311,17 @@ st.markdown("""
         border-radius: 12px !important;
         padding: 0.85rem 1.25rem !important;
         text-align: left !important;
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
         color: #1B2B5E !important;
         font-weight: 400 !important;
         line-height: 1.5 !important;
         transition: box-shadow 0.15s ease, background 0.15s ease !important;
+    }
+    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
+        + div[data-testid="stButton"] > button > div[data-testid="stMarkdownContainer"] {
+        text-align: left !important;
+        width: 100% !important;
     }
     div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
         + div[data-testid="stButton"] > button:hover {
