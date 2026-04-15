@@ -484,7 +484,7 @@ for _key, _default in [
 # ─────────────────────────────────────────────
 # DATA FUNCTIONS
 # ─────────────────────────────────────────────
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, show_spinner=False)
 def get_company_by_email(email):
     """Find a company record by supervisor email."""
     tables = get_tables()
@@ -530,7 +530,7 @@ def get_company_by_email(email):
         return None
     return None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_projects_for_company(company_name):
     """Get all Company Projects belonging to a given company."""
     tables = get_tables()
@@ -613,7 +613,7 @@ def get_projects_for_company(company_name):
         st.error(f"Error fetching projects: {e}")
         return []
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_students_for_company(company_name):
     """Get all Student Applications assigned to a given company."""
     tables = get_tables()
@@ -663,7 +663,7 @@ def get_students_for_company(company_name):
         st.error(f"Error fetching students: {e}")
         return []
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_payments_for_company(company_name):
     """Get all payment records for a given company from the payment table."""
     tables = get_tables()
