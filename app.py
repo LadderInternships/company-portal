@@ -1851,8 +1851,8 @@ def show_interns():
         # Hidden marker → CSS targets the very next button as an intern card
         st.markdown('<span class="intern-btn-marker"></span>', unsafe_allow_html=True)
         label = (
-            f"**{name}**\n\n"
-            f"🌍 {tz} · Grade {grade} · 📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
+            f"**{name}** · Grade {grade} · 🌍 {tz} · "
+            f"📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
         )
         if st.button(label, key=f"intern_{sid}", use_container_width=True):
             st.session_state.selected_intern_id = sid
