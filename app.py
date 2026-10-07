@@ -207,6 +207,7 @@ PROJECT_FIELDS = {
     "cohort_start_date":  "cohort start date (from Assigned Students)",
     "wde_form_link":      "WDE Link to FillOut Forms (from Company Availability)",
     "first_meeting_opt1": "First Meeting Date & Time (Option 1)",
+    "wde_upload_form":    "WDE Upload Form [Personalized link - fillout]",
 }
 
 FIRST_MEETING_FORM_URL = "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"
@@ -645,6 +646,7 @@ def get_projects_for_company(company_name):
                 "cohort_start_date": f.get(PROJECT_FIELDS["cohort_start_date"], ""),
                 "wde_form_link":     _first_url(f.get(PROJECT_FIELDS["wde_form_link"], "")),
                 "first_meeting_opt1":f.get(PROJECT_FIELDS["first_meeting_opt1"], ""),
+                "wde_upload_form":   _first_url(f.get(PROJECT_FIELDS["wde_upload_form"], "")),
                 **week_data,
             })
         return projects
@@ -2085,15 +2087,17 @@ def show_resources():
                         sk = f"res_project_{proj['id']}_{res['id']}"
                         if sk not in st.session_state:
                             st.session_state[sk] = False
+                        # The WDE form link is personalised per project (from Airtable)
+                        url = proj.get("wde_upload_form", "") if res["id"] == "weekly_deliverable_form" else res["url"]
                         c_name, c_link, c_done = st.columns(col_widths)
                         c_name.markdown(
                             f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>',
                             unsafe_allow_html=True,
                         )
-                        if res["url"]:
+                        if url:
                             c_link.markdown(
                                 f'<p style="font-size:13px;margin:0;padding-top:11px;">'
-                                f'<a href="{res["url"]}" target="_blank" style="color:#1B2B5E;">Open →</a></p>',
+                                f'<a href="{url}" target="_blank" style="color:#1B2B5E;">Open →</a></p>',
                                 unsafe_allow_html=True,
                             )
                         else:
