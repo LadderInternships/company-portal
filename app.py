@@ -1111,32 +1111,6 @@ def show_company_overview():
                         f'font-size:12px;font-weight:600;color:{color};">{check}</div>'
                     )
 
-                def _submission_row(label, form_url, submitted):
-                    if submitted:
-                        badge = ('<span style="font-size:11px;background:#dcfce7;color:#166534;'
-                                 'padding:3px 10px;border-radius:20px;">✓ Submitted</span>')
-                    else:
-                        badge = ('<span style="font-size:11px;background:#fef3c7;color:#92400e;'
-                                 'padding:3px 10px;border-radius:20px;">Pending</span>')
-                    link = (f'<a href="{form_url}" target="_blank" style="font-size:12px;color:#1B2B5E;">'
-                            f'Open form ↗</a>') if form_url else ""
-                    return (
-                        '<div style="display:flex;align-items:center;justify-content:space-between;'
-                        'gap:12px;padding:8px 0;border-top:0.5px solid rgba(0,0,0,0.08);">'
-                        f'<span style="font-size:13px;">{label}</span>'
-                        f'<span style="display:flex;align-items:center;gap:12px;">{link}{badge}</span>'
-                        '</div>'
-                    )
-
-                submissions_html = (
-                    _submission_row("Weekly Deliverable Expectations (WDE)",
-                                    proj.get("wde_form_link", ""),
-                                    bool(str(proj.get("wde_link", "") or "").strip()))
-                    + _submission_row("First Meeting Availability",
-                                      FIRST_MEETING_FORM_URL,
-                                      bool(str(proj.get("first_meeting_opt1", "") or "").strip()))
-                )
-
                 st.markdown(
                     f"""
                     <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;
@@ -1161,8 +1135,6 @@ def show_company_overview():
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         {weeks_html}
                       </div>
-                      <p style="font-size:12px;color:#6b7280;margin:16px 0 4px;">Submissions required:</p>
-                      {submissions_html}
                     </div>
                     """,
                     unsafe_allow_html=True,
