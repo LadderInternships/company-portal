@@ -168,6 +168,8 @@ COMPANY_FIELDS = {
     "bank_account_name":  "Bank Account Name",
     "payment_email":      "Payment Email",
     "us_or_intl":         "FN: US or International?",
+    "cpm_name":           "Company partnerships manager name",
+    "cpm_email":          "Company Partnerships Manager Email",
 }
 
 PROJECT_FIELDS = {
@@ -203,7 +205,11 @@ PROJECT_FIELDS = {
     "midterm_submitted":  "Midterm feedback submission (from Company Availability)",
     "final_submitted":    "Final feedback submission (from Company Availability)",
     "cohort_start_date":  "cohort start date (from Assigned Students)",
+    "wde_form_link":      "WDE Link to FillOut Forms (from Company Availability)",
+    "first_meeting_opt1": "First Meeting Date & Time (Option 1)",
 }
+
+FIRST_MEETING_FORM_URL = "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"
 
 PAYMENT_FIELDS = {
     "company":            "Company",
@@ -506,6 +512,14 @@ def get_company_by_email(email):
                 time_zone="America/New_York",
             )
             f_display = r_display["fields"]
+
+            def _get_ci(fields, name):
+                """Look up a field by name, ignoring capitalisation."""
+                for k, v in fields.items():
+                    if k.lower() == name.lower():
+                        return v
+                return ""
+
             return {
                 "id":                 r["id"],
                 "name":               f.get(COMPANY_FIELDS["name"], ""),
@@ -524,11 +538,23 @@ def get_company_by_email(email):
                 "bank_account_name":  f.get(COMPANY_FIELDS["bank_account_name"], ""),
                 "payment_email":      f.get(COMPANY_FIELDS["payment_email"], ""),
                 "us_or_intl":         f_display.get(COMPANY_FIELDS["us_or_intl"], ""),
+                "cpm_name":           _get_ci(f_display, COMPANY_FIELDS["cpm_name"]),
+                "cpm_email":          _get_ci(f_display, COMPANY_FIELDS["cpm_email"]),
             }
     except Exception as e:
         st.error("Unable to reach the database. Please try again in a moment.")
         return None
     return None
+
+def _first_url(val):
+    """Lookup fields can hold several comma-separated values; return the first URL."""
+    if isinstance(val, list):
+        val = ", ".join(str(v) for v in val)
+    for part in str(val or "").split(","):
+        part = part.strip().strip('"')
+        if part.startswith("http"):
+            return part
+    return ""
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_projects_for_company(company_name):
@@ -606,6 +632,8 @@ def get_projects_for_company(company_name):
                 "midterm_submitted": _is_active(f.get(PROJECT_FIELDS["midterm_submitted"], "")),
                 "final_submitted":   _is_active(f.get(PROJECT_FIELDS["final_submitted"],   "")),
                 "cohort_start_date": f.get(PROJECT_FIELDS["cohort_start_date"], ""),
+                "wde_form_link":     _first_url(f.get(PROJECT_FIELDS["wde_form_link"], "")),
+                "first_meeting_opt1":f.get(PROJECT_FIELDS["first_meeting_opt1"], ""),
                 **week_data,
             })
         return projects
@@ -1008,8 +1036,10 @@ def show_company_overview():
             """,
             unsafe_allow_html=True,
         )
-        st.text_input("Name", placeholder="Add name", key="cp_name")
-        st.text_input("Email", placeholder="Add email", key="cp_email")
+        st.text_input("Name", value=(company or {}).get("cpm_name", ""),
+                      placeholder="Not yet assigned", disabled=True)
+        st.text_input("Email", value=(company or {}).get("cpm_email", ""),
+                      placeholder="Not yet assigned", disabled=True)
 
     with col_pm:
         st.markdown(
@@ -1070,6 +1100,32 @@ def show_company_overview():
                         f'font-size:12px;font-weight:600;color:{color};">{check}</div>'
                     )
 
+                def _submission_row(label, form_url, submitted):
+                    if submitted:
+                        badge = ('<span style="font-size:11px;background:#dcfce7;color:#166534;'
+                                 'padding:3px 10px;border-radius:20px;">✓ Submitted</span>')
+                    else:
+                        badge = ('<span style="font-size:11px;background:#fef3c7;color:#92400e;'
+                                 'padding:3px 10px;border-radius:20px;">Pending</span>')
+                    link = (f'<a href="{form_url}" target="_blank" style="font-size:12px;color:#1B2B5E;">'
+                            f'Open form ↗</a>') if form_url else ""
+                    return (
+                        '<div style="display:flex;align-items:center;justify-content:space-between;'
+                        'gap:12px;padding:8px 0;border-top:0.5px solid rgba(0,0,0,0.08);">'
+                        f'<span style="font-size:13px;">{label}</span>'
+                        f'<span style="display:flex;align-items:center;gap:12px;">{link}{badge}</span>'
+                        '</div>'
+                    )
+
+                submissions_html = (
+                    _submission_row("Weekly Deliverable Expectations (WDE)",
+                                    proj.get("wde_form_link", ""),
+                                    bool(str(proj.get("wde_link", "") or "").strip()))
+                    + _submission_row("First Meeting Availability",
+                                      FIRST_MEETING_FORM_URL,
+                                      bool(str(proj.get("first_meeting_opt1", "") or "").strip()))
+                )
+
                 st.markdown(
                     f"""
                     <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;
@@ -1094,6 +1150,8 @@ def show_company_overview():
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         {weeks_html}
                       </div>
+                      <p style="font-size:12px;color:#6b7280;margin:16px 0 4px;">Submissions required:</p>
+                      {submissions_html}
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -1101,7 +1159,7 @@ def show_company_overview():
 
     st.markdown("---")
     st.info("Use **Your Projects** in the sidebar to view your project details and meeting progress.")
-    st.caption("To update any information on this page, please reach out to our Company Partnerships Manager, Linh, at [linh.nguyen@ladderinternships.com](mailto:linh.nguyen@ladderinternships.com).")
+    st.caption("To update any information on this page, please reach out to our Company Partnerships Manager, Harishree Khunt, at [harishree.khunt@ladderinternships.com](mailto:harishree.khunt@ladderinternships.com).")
 
 def extract_cohort_from_student_id(student_id):
     """Extract cohort name from 'StudentName | CompanyName | CohortName' format."""
@@ -1343,8 +1401,39 @@ def show_projects():
 
     if len(cohorts) > 1:
         cohort_options = ["All Cohorts"] + cohorts
-        selected_cohort = st.selectbox("Filter by cohort", cohort_options, key="project_cohort_filter")
+
+        # Remember the chosen cohort for the whole session. Streamlit drops a
+        # widget's state when it isn't on screen (e.g. after opening a project
+        # or switching tabs), so we keep a separate copy and restore from it.
+        saved_cohort = st.session_state.get("saved_project_cohort", "All Cohorts")
+        if saved_cohort not in cohort_options:
+            saved_cohort = "All Cohorts"
+        if "project_cohort_filter" not in st.session_state:
+            st.session_state["project_cohort_filter"] = saved_cohort
+
+        def _on_cohort_change():
+            choice = st.session_state["project_cohort_filter"]
+            st.session_state["saved_project_cohort"] = choice
+            if choice != "All Cohorts":
+                st.toast(f"Filter applied: {choice}")
+
+        def _clear_cohort_filter():
+            st.session_state["project_cohort_filter"] = "All Cohorts"
+            st.session_state["saved_project_cohort"]  = "All Cohorts"
+            st.toast("Cohort filter cleared")
+
+        selected_cohort = st.selectbox(
+            "Filter by cohort", cohort_options,
+            key="project_cohort_filter", on_change=_on_cohort_change,
+        )
         if selected_cohort != "All Cohorts":
+            col_msg, col_btn = st.columns([5, 1])
+            with col_msg:
+                st.info(f"You've filtered by **{selected_cohort}**. "
+                        "This filter stays on until you clear it.")
+            with col_btn:
+                st.button("✕ Clear filter", key="clear_project_cohort",
+                          on_click=_clear_cohort_filter, use_container_width=True)
             projects = [p for p in projects if p["cohort"] == selected_cohort]
         else:
             show_grouped = True
@@ -2222,7 +2311,7 @@ def show_payments():
     st.caption(
         "Payment amounts are calculated after Summer 2025. "
         "For questions about your compensation, contact "
-        "[linh.nguyen@ladderinternships.com](mailto:linh.nguyen@ladderinternships.com)."
+        "[harishree.khunt@ladderinternships.com](mailto:harishree.khunt@ladderinternships.com)."
     )
 
 
@@ -2302,6 +2391,8 @@ def show_dashboard():
             st.session_state.is_preview          = False
             st.session_state.selected_intern_id  = None
             st.session_state.selected_project_id = None
+            st.session_state.pop("saved_project_cohort", None)
+            st.session_state.pop("project_cohort_filter", None)
             # Invalidate the session token so the URL no longer re-authenticates
             if "session" in st.query_params:
                 del st.query_params["session"]
