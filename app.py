@@ -1997,25 +1997,6 @@ def show_resources():
         unsafe_allow_html=True,
     )
 
-    # ── Legend ──
-    st.markdown(
-        """
-        <div style="display:flex;gap:16px;margin-bottom:20px;padding:8px 12px;
-                    background:rgba(0,0,0,0.02);border-radius:8px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:14px;height:14px;border-radius:3px;background:#3C3489;"></div>
-            <span style="font-size:11px;color:#666;">Fulfilled — Yes</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,0.2);"></div>
-            <span style="font-size:11px;color:#666;">Not yet — No</span>
-          </div>
-          <span style="font-size:11px;color:#bbb;margin-left:auto;">Toggle each checkbox to mark complete</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     PROJECT_RESOURCES = [
         {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": "",
          "note": "Submit this before the start of the cohort."},
@@ -2057,14 +2038,19 @@ def show_resources():
                         unsafe_allow_html=True,
                     )
                     # Checklist table: Name | Link | Done
-                    col_widths = [5, 2, 1]
+                    col_widths = [5, 2, 2]
                     header_style = ('font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;'
                                     'letter-spacing:0.05em;margin:0;padding-bottom:6px;'
                                     'border-bottom:1px solid rgba(0,0,0,0.12);')
                     h_name, h_link, h_done = st.columns(col_widths)
                     h_name.markdown(f'<p style="{header_style}">Name</p>', unsafe_allow_html=True)
                     h_link.markdown(f'<p style="{header_style}">Link</p>', unsafe_allow_html=True)
-                    h_done.markdown(f'<p style="{header_style}">Done</p>', unsafe_allow_html=True)
+                    h_done.markdown(
+                        f'<p style="{header_style}">Done '
+                        '<span style="text-transform:none;letter-spacing:0;font-weight:400;">'
+                        '(Toggle each checkbox to mark complete)</span></p>',
+                        unsafe_allow_html=True,
+                    )
 
                     proj_done = 0
                     for res in PROJECT_RESOURCES:
