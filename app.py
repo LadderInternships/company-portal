@@ -465,6 +465,17 @@ st.markdown("""
     [data-testid="stSidebar"] .stRadio > div > label > div:first-child {
         display: none !important;
     }
+    /* Read-only text inputs (e.g. Partnerships Manager contact): show at full strength, not faded */
+    .stTextInput input:disabled {
+        color: #1A1A2E !important;
+        -webkit-text-fill-color: #1A1A2E !important;
+        opacity: 1 !important;
+        cursor: default !important;
+    }
+    .stTextInput:has(input:disabled) label,
+    .stTextInput:has(input:disabled) label p {
+        opacity: 1 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
