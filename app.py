@@ -2265,7 +2265,7 @@ def show_dashboard():
     # Handle nav query param for in-page hyperlinks
     nav_map = {
         "projects":  "📁 Your Projects",
-        "resources": "📚 Resources",
+        "resources": "📚 Submissions + Resources",
     }
     qp = st.query_params.get("nav", "")
     if qp in nav_map:
@@ -2313,7 +2313,7 @@ def show_dashboard():
 
         view = st.radio(
             "Navigation",
-            ["🏢 Company Dashboard", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Resources"],
+            ["🏢 Company Dashboard", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Submissions + Resources"],
             label_visibility="collapsed",
             key="nav_radio",
         )
