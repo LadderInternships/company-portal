@@ -2035,14 +2035,6 @@ def show_resources():
         unsafe_allow_html=True,
     )
 
-    COHORT_RESOURCES = [
-        {"id": "project_builder_form",    "label": "Project builder form",         "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7"},
-        {"id": "ladder_supervisor_guide", "label": "Ladder supervisor guide",       "url": ""},
-        {"id": "referral_form",           "label": "Referral form",                 "url": ""},
-        {"id": "onboarding_forms",        "label": "Onboarding forms",              "url": ""},
-        {"id": "contact_pm",              "label": "Contact your program manager",  "url": ""},
-    ]
-
     PROJECT_RESOURCES = [
         {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": ""},
         {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
@@ -2055,34 +2047,11 @@ def show_resources():
         st.info("No active cohorts found.")
 
     for cohort_name, cohort_projects in cohorts.items():
-        cohort_signups = sum(p.get("total_signups", 0) for p in cohort_projects)
-
-        # ── Cohort resource card ──
-        with st.expander(f"🟢 {cohort_name}  ·  Cohort resources  ·  {cohort_signups} sign-ups", expanded=True):
-            cohort_done = 0
-            for res in COHORT_RESOURCES:
-                sk = f"res_cohort_{cohort_name}_{res['id']}"
-                if sk not in st.session_state:
-                    st.session_state[sk] = False
-                checked = st.checkbox(res["label"], key=sk)
-                if checked:
-                    cohort_done += 1
-                    if res["url"]:
-                        st.caption(f"[Open →]({res['url']})")
-                else:
-                    if res["url"]:
-                        st.caption(f"[Open →]({res['url']})")
-                    else:
-                        st.caption("Link coming soon")
-
-            pct = int((cohort_done / len(COHORT_RESOURCES)) * 100)
-            st.progress(pct / 100, text=f"{cohort_done}/{len(COHORT_RESOURCES)} complete")
-
         # ── Project resource cards ──
         if cohort_projects:
             st.markdown(
                 '<p style="font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;'
-                f'letter-spacing:0.06em;margin:6px 0 8px 16px;">Project resources ({len(cohort_projects)})</p>',
+                f'letter-spacing:0.06em;margin:6px 0 8px 16px;">{cohort_name}  ·  Project resources ({len(cohort_projects)})</p>',
                 unsafe_allow_html=True,
             )
             for proj in cohort_projects:
