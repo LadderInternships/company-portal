@@ -2194,11 +2194,7 @@ def show_payments():
         if matched_projects:
             st.markdown('<p class="info-label">Projects</p>', unsafe_allow_html=True)
             for proj in matched_projects:
-                if st.button(f"📁 {proj['name']}", key=f"proj_link_{p['id']}_{proj['id']}"):
-                    st.session_state.selected_project_id = proj["id"]
-                    st.session_state["nav_radio"] = "📁 Your Projects"
-                    st.query_params["project"] = proj["id"]
-                    st.rerun()
+                st.markdown(f"📁 {proj['name']}")
 
         # ── Student counts ───────────────────────────────────────────
         st.markdown('<p class="info-label">Student Breakdown</p>', unsafe_allow_html=True)
