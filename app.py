@@ -889,7 +889,7 @@ def show_login_page():
         unsafe_allow_html=True
     )
     st.markdown('<p class="main-header">Company Portal</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Track your interns progress through the program</p>', unsafe_allow_html=True)
+    st.markdown("<p class=\"sub-header\">Track your intern's progress through the program</p>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
