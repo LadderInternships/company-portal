@@ -1956,7 +1956,7 @@ def show_interns():
 # RESOURCES VIEW
 # ─────────────────────────────────────────────
 def show_resources():
-    st.markdown('<p class="main-header">Resources</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">Submissions + Resources</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-header">Helpful links and tools for hosting a Ladder intern.</p>',
         unsafe_allow_html=True
