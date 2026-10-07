@@ -1799,9 +1799,8 @@ def show_interns():
                 filtered = [s for s in students if s["cohort"] == selected_cohort]
         with col_f2:
             search = st.text_input(
-                "Search interns",
+                "Search by name",
                 placeholder="🔍 Type a name...",
-                label_visibility="collapsed",
                 key="intern_search"
             )
             if search:
