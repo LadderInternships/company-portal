@@ -298,63 +298,42 @@ st.markdown("""
         font-size: 0.78rem;
         margin: 2px;
     }
-    /* ── Intern card buttons ─────────────────────────────────────────── */
-    /* The hidden marker collapses to nothing */
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker) {
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-    }
-    /* The button that immediately follows the marker becomes the card */
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] {
+    /* ── Intern cards ───────────────────────────────────────────────── */
+    /* Each card is a keyed container holding a 4-column row; the "Open" button
+       is stretched invisibly over the whole card so the entire row is clickable. */
+    div[class*="st-key-intern_card_"] {
+        position: relative;
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 0.7rem 1.25rem;
         margin-bottom: 0.6rem;
+        gap: 0 !important;
+        transition: box-shadow 0.15s ease, background 0.15s ease;
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button {
-        background: #FFFFFF !important;
-        border: 1px solid #E5E7EB !important;
-        border-radius: 12px !important;
-        padding: 0.85rem 1.25rem !important;
-        text-align: left !important;
-        justify-content: flex-start !important;
-        align-items: flex-start !important;
-        color: #1B2B5E !important;
-        font-weight: 400 !important;
-        line-height: 1.5 !important;
-        transition: box-shadow 0.15s ease, background 0.15s ease !important;
+    div[class*="st-key-intern_card_"]:hover {
+        background: #F5F7FF;
+        box-shadow: 0 4px 12px rgba(27,43,94,0.10);
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button > div[data-testid="stMarkdownContainer"] {
-        text-align: left !important;
-        width: 100% !important;
+    div[class*="st-key-intern_card_"] p {
+        font-size: 0.9rem;
+        color: #1B2B5E;
+        text-align: left;
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button:hover {
-        background: #F5F7FF !important;
-        box-shadow: 0 4px 12px rgba(27,43,94,0.10) !important;
-        border-color: #E5E7EB !important;
-        color: #1B2B5E !important;
+    /* Let the button anchor to the card itself, not its own wrapper */
+    div[class*="st-key-intern_card_"] div[data-testid="stElementContainer"]:has(div[data-testid="stButton"]) {
+        position: static !important;
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button * {
-        text-align: left !important;
-        width: 100% !important;
-        margin: 0 !important;
-        display: block !important;
+    div[class*="st-key-intern_card_"] div[data-testid="stButton"] {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
     }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button p:first-child {
-        font-weight: 600 !important;
-        font-size: 0.97rem !important;
-        margin-bottom: 0.15rem !important;
-    }
-    div[data-testid="stMarkdownContainer"]:has(.intern-btn-marker)
-        + div[data-testid="stButton"] > button p:last-child {
-        font-size: 0.82rem !important;
-        color: #6B7280 !important;
-        font-weight: 400 !important;
+    div[class*="st-key-intern_card_"] div[data-testid="stButton"] button {
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
     }
     .project-subheader {
         font-size: 0.82rem;
@@ -1842,22 +1821,23 @@ def show_interns():
     # ── Render helpers ────────────────────────────────────────────────
 
     def _render_intern_card(student):
-        """One st.button styled as a card via CSS — single element, fully clickable."""
+        """Card with aligned name / grade / time zone / meetings columns; the whole card is clickable."""
         meetings = parse_meetings_count(student.get("meetings_count", 0))
         tz       = student.get("timezone") or "—"
         grade    = student.get("grade") or "—"
         name     = student.get("full_name") or "—"
         sid      = student["id"]
-        # Hidden marker → CSS targets the very next button as an intern card
-        st.markdown('<span class="intern-btn-marker"></span>', unsafe_allow_html=True)
-        label = (
-            f"**{name}** · Grade {grade} · 🌍 {tz} · "
-            f"📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
-        )
-        if st.button(label, key=f"intern_{sid}", use_container_width=True):
-            st.session_state.selected_intern_id = sid
-            st.query_params["intern"] = sid
-            st.rerun()
+        meetings_str = f"📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
+        with st.container(key=f"intern_card_{sid}"):
+            c_name, c_grade, c_tz, c_meet = st.columns([3, 2, 5, 2])
+            c_name.markdown(f"**{name}**")
+            c_grade.markdown(f"Grade {grade}")
+            c_tz.markdown(f"🌍 {tz}")
+            c_meet.markdown(meetings_str)
+            if st.button(f"Open {name}", key=f"intern_{sid}", use_container_width=True):
+                st.session_state.selected_intern_id = sid
+                st.query_params["intern"] = sid
+                st.rerun()
 
     def _render_project_group(project_name, interns):
         label      = project_name if project_name else "Unassigned Project"
