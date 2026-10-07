@@ -2016,7 +2016,7 @@ def show_resources():
     for cohort_name, cohort_projects in cohorts.items():
         # ── Project resource cards ──
         if cohort_projects:
-            st.markdown(f"### {cohort_name} · Project Resources ({len(cohort_projects)})")
+            st.markdown(f"### {cohort_name}: Submissions Required")
             for proj in cohort_projects:
                 proj_label = (
                     f"{proj.get('name','Untitled')}  ·  "
