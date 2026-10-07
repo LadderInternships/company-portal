@@ -2049,11 +2049,7 @@ def show_resources():
     for cohort_name, cohort_projects in cohorts.items():
         # ── Project resource cards ──
         if cohort_projects:
-            st.markdown(
-                '<p style="font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;'
-                f'letter-spacing:0.06em;margin:6px 0 8px 16px;">{cohort_name}  ·  Project resources ({len(cohort_projects)})</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"### {cohort_name} · Project Resources ({len(cohort_projects)})")
             for proj in cohort_projects:
                 proj_label = (
                     f"{proj.get('name','Untitled')}  ·  "
