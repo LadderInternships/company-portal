@@ -2105,18 +2105,39 @@ def show_resources():
                         f'</div>',
                         unsafe_allow_html=True,
                     )
+                    # Checklist table: Name | Link | Done
+                    col_widths = [5, 2, 1]
+                    header_style = ('font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;'
+                                    'letter-spacing:0.05em;margin:0;padding-bottom:6px;'
+                                    'border-bottom:1px solid rgba(0,0,0,0.12);')
+                    h_name, h_link, h_done = st.columns(col_widths)
+                    h_name.markdown(f'<p style="{header_style}">Name</p>', unsafe_allow_html=True)
+                    h_link.markdown(f'<p style="{header_style}">Link</p>', unsafe_allow_html=True)
+                    h_done.markdown(f'<p style="{header_style}">Done</p>', unsafe_allow_html=True)
+
                     proj_done = 0
                     for res in PROJECT_RESOURCES:
                         sk = f"res_project_{proj['id']}_{res['id']}"
                         if sk not in st.session_state:
                             st.session_state[sk] = False
-                        checked = st.checkbox(res["label"], key=sk)
-                        if checked:
-                            proj_done += 1
+                        c_name, c_link, c_done = st.columns(col_widths)
+                        c_name.markdown(
+                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>',
+                            unsafe_allow_html=True,
+                        )
                         if res["url"]:
-                            st.caption(f"[Open →]({res['url']})")
+                            c_link.markdown(
+                                f'<p style="font-size:13px;margin:0;padding-top:11px;">'
+                                f'<a href="{res["url"]}" target="_blank" style="color:#1B2B5E;">Open →</a></p>',
+                                unsafe_allow_html=True,
+                            )
                         else:
-                            st.caption("Link coming soon")
+                            c_link.markdown(
+                                '<p style="font-size:13px;color:#9ca3af;margin:0;padding-top:11px;">Link coming soon</p>',
+                                unsafe_allow_html=True,
+                            )
+                        if c_done.checkbox(res["label"], key=sk, label_visibility="collapsed"):
+                            proj_done += 1
 
                     pct = int((proj_done / len(PROJECT_RESOURCES)) * 100)
                     st.progress(pct / 100, text=f"{proj_done}/{len(PROJECT_RESOURCES)} complete")
