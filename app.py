@@ -2035,14 +2035,6 @@ def show_resources():
         unsafe_allow_html=True,
     )
 
-    COHORT_RESOURCES = [
-        {"id": "project_builder_form",    "label": "Project builder form",         "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7"},
-        {"id": "ladder_supervisor_guide", "label": "Ladder supervisor guide",       "url": ""},
-        {"id": "referral_form",           "label": "Referral form",                 "url": ""},
-        {"id": "onboarding_forms",        "label": "Onboarding forms",              "url": ""},
-        {"id": "contact_pm",              "label": "Contact your program manager",  "url": ""},
-    ]
-
     PROJECT_RESOURCES = [
         {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": ""},
         {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
@@ -2055,36 +2047,9 @@ def show_resources():
         st.info("No active cohorts found.")
 
     for cohort_name, cohort_projects in cohorts.items():
-        cohort_signups = sum(p.get("total_signups", 0) for p in cohort_projects)
-
-        # ── Cohort resource card ──
-        with st.expander(f"🟢 {cohort_name}  ·  Cohort resources  ·  {cohort_signups} sign-ups", expanded=True):
-            cohort_done = 0
-            for res in COHORT_RESOURCES:
-                sk = f"res_cohort_{cohort_name}_{res['id']}"
-                if sk not in st.session_state:
-                    st.session_state[sk] = False
-                checked = st.checkbox(res["label"], key=sk)
-                if checked:
-                    cohort_done += 1
-                    if res["url"]:
-                        st.caption(f"[Open →]({res['url']})")
-                else:
-                    if res["url"]:
-                        st.caption(f"[Open →]({res['url']})")
-                    else:
-                        st.caption("Link coming soon")
-
-            pct = int((cohort_done / len(COHORT_RESOURCES)) * 100)
-            st.progress(pct / 100, text=f"{cohort_done}/{len(COHORT_RESOURCES)} complete")
-
         # ── Project resource cards ──
         if cohort_projects:
-            st.markdown(
-                '<p style="font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;'
-                f'letter-spacing:0.06em;margin:6px 0 8px 16px;">Project resources ({len(cohort_projects)})</p>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"### {cohort_name} · Project Resources ({len(cohort_projects)})")
             for proj in cohort_projects:
                 proj_label = (
                     f"{proj.get('name','Untitled')}  ·  "
@@ -2105,18 +2070,39 @@ def show_resources():
                         f'</div>',
                         unsafe_allow_html=True,
                     )
+                    # Checklist table: Name | Link | Done
+                    col_widths = [5, 2, 1]
+                    header_style = ('font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;'
+                                    'letter-spacing:0.05em;margin:0;padding-bottom:6px;'
+                                    'border-bottom:1px solid rgba(0,0,0,0.12);')
+                    h_name, h_link, h_done = st.columns(col_widths)
+                    h_name.markdown(f'<p style="{header_style}">Name</p>', unsafe_allow_html=True)
+                    h_link.markdown(f'<p style="{header_style}">Link</p>', unsafe_allow_html=True)
+                    h_done.markdown(f'<p style="{header_style}">Done</p>', unsafe_allow_html=True)
+
                     proj_done = 0
                     for res in PROJECT_RESOURCES:
                         sk = f"res_project_{proj['id']}_{res['id']}"
                         if sk not in st.session_state:
                             st.session_state[sk] = False
-                        checked = st.checkbox(res["label"], key=sk)
-                        if checked:
-                            proj_done += 1
+                        c_name, c_link, c_done = st.columns(col_widths)
+                        c_name.markdown(
+                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>',
+                            unsafe_allow_html=True,
+                        )
                         if res["url"]:
-                            st.caption(f"[Open →]({res['url']})")
+                            c_link.markdown(
+                                f'<p style="font-size:13px;margin:0;padding-top:11px;">'
+                                f'<a href="{res["url"]}" target="_blank" style="color:#1B2B5E;">Open →</a></p>',
+                                unsafe_allow_html=True,
+                            )
                         else:
-                            st.caption("Link coming soon")
+                            c_link.markdown(
+                                '<p style="font-size:13px;color:#9ca3af;margin:0;padding-top:11px;">Link coming soon</p>',
+                                unsafe_allow_html=True,
+                            )
+                        if c_done.checkbox(res["label"], key=sk, label_visibility="collapsed"):
+                            proj_done += 1
 
                     pct = int((proj_done / len(PROJECT_RESOURCES)) * 100)
                     st.progress(pct / 100, text=f"{proj_done}/{len(PROJECT_RESOURCES)} complete")
@@ -2133,7 +2119,7 @@ def show_resources():
         {"title": "Weekly Update Form",                  "description": "Submit your notes and intern progress after each weekly meeting.",                                               "url": MEETING_UPDATE_FORM},
         {"title": "Midterm Feedback Form",               "description": "Share your midterm feedback on your intern's performance halfway through the program.",                          "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
         {"title": "End of Cohort Review Form",           "description": "Submit your final review and evaluation of your intern at the end of the program.",                             "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
-        {"title": "Referral Form",                       "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",                                  "url": ""},
+        {"title": "Referral Form",                       "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",                                  "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrmMTR7W8xBn7lQl"},
         {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": ""},
         {"title": "Contact Your Program Manager",        "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",                           "url": ""},
     ]
