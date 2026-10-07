@@ -1997,31 +1997,17 @@ def show_resources():
         unsafe_allow_html=True,
     )
 
-    # ── Legend ──
-    st.markdown(
-        """
-        <div style="display:flex;gap:16px;margin-bottom:20px;padding:8px 12px;
-                    background:rgba(0,0,0,0.02);border-radius:8px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:14px;height:14px;border-radius:3px;background:#3C3489;"></div>
-            <span style="font-size:11px;color:#666;">Fulfilled — Yes</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(0,0,0,0.2);"></div>
-            <span style="font-size:11px;color:#666;">Not yet — No</span>
-          </div>
-          <span style="font-size:11px;color:#bbb;margin-left:auto;">Toggle each checkbox to mark complete</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     PROJECT_RESOURCES = [
-        {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": ""},
-        {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
-        {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM},
-        {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
-        {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
+        {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": "",
+         "note": "Submit this before the start of the cohort."},
+        {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
+         "note": "Submit this before the start of the cohort."},
+        {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM,
+         "note": "Submit this weekly after your meeting with the intern."},
+        {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
+         "note": "Submit this after your 4th meeting with the intern."},
+        {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
+         "note": "Submit this after all interns complete all meetings."},
     ]
 
     if not cohorts:
@@ -2052,14 +2038,19 @@ def show_resources():
                         unsafe_allow_html=True,
                     )
                     # Checklist table: Name | Link | Done
-                    col_widths = [5, 2, 1]
+                    col_widths = [5, 2, 2]
                     header_style = ('font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;'
                                     'letter-spacing:0.05em;margin:0;padding-bottom:6px;'
                                     'border-bottom:1px solid rgba(0,0,0,0.12);')
                     h_name, h_link, h_done = st.columns(col_widths)
                     h_name.markdown(f'<p style="{header_style}">Name</p>', unsafe_allow_html=True)
                     h_link.markdown(f'<p style="{header_style}">Link</p>', unsafe_allow_html=True)
-                    h_done.markdown(f'<p style="{header_style}">Done</p>', unsafe_allow_html=True)
+                    h_done.markdown(
+                        f'<p style="{header_style}">Done '
+                        '<span style="text-transform:none;letter-spacing:0;font-weight:400;">'
+                        '(Toggle each checkbox to mark complete)</span></p>',
+                        unsafe_allow_html=True,
+                    )
 
                     proj_done = 0
                     for res in PROJECT_RESOURCES:
@@ -2069,8 +2060,12 @@ def show_resources():
                         # The WDE form link is personalised per project (from Airtable)
                         url = proj.get("wde_upload_form", "") if res["id"] == "weekly_deliverable_form" else res["url"]
                         c_name, c_link, c_done = st.columns(col_widths)
+                        note_html = (
+                            f'<p style="font-size:12px;color:#6b7280;margin:2px 0 0;">{res["note"]}</p>'
+                            if res.get("note") else ""
+                        )
                         c_name.markdown(
-                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>',
+                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>{note_html}',
                             unsafe_allow_html=True,
                         )
                         if url:
