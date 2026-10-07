@@ -2017,11 +2017,16 @@ def show_resources():
     )
 
     PROJECT_RESOURCES = [
-        {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": ""},
-        {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
-        {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM},
-        {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
-        {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
+        {"id": "weekly_deliverable_form", "label": "Weekly deliverable expectation form", "url": "",
+         "note": "Submit this before the start of the cohort."},
+        {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
+         "note": "Submit this before the start of the cohort."},
+        {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM,
+         "note": "Submit this weekly after your meeting with the intern."},
+        {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
+         "note": "Submit this after your 4th meeting with the intern."},
+        {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
+         "note": "Submit this after all interns complete all meetings."},
     ]
 
     if not cohorts:
@@ -2069,8 +2074,12 @@ def show_resources():
                         # The WDE form link is personalised per project (from Airtable)
                         url = proj.get("wde_upload_form", "") if res["id"] == "weekly_deliverable_form" else res["url"]
                         c_name, c_link, c_done = st.columns(col_widths)
+                        note_html = (
+                            f'<p style="font-size:12px;color:#6b7280;margin:2px 0 0;">{res["note"]}</p>'
+                            if res.get("note") else ""
+                        )
                         c_name.markdown(
-                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>',
+                            f'<p style="font-size:14px;margin:0;padding-top:10px;">{res["label"]}</p>{note_html}',
                             unsafe_allow_html=True,
                         )
                         if url:
