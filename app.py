@@ -2008,9 +2008,9 @@ def show_resources():
         {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
          "note": "Submit this before the start of the cohort."},
         {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM,
-         "note": "Submit this weekly after your meeting with the intern."},
+         "note": "Submit this weekly after your meeting with the interns."},
         {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
-         "note": "Submit this after your 4th meeting with the intern."},
+         "note": "Submit this after your 4th meeting with the interns."},
         {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
          "note": "Submit this after all interns complete all meetings."},
     ]
@@ -2103,7 +2103,7 @@ def show_resources():
         {"title": "Midterm Feedback Form",               "description": "Share your midterm feedback on your intern's performance halfway through the program.",                          "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
         {"title": "End of Cohort Review Form",           "description": "Submit your final review and evaluation of your intern at the end of the program.",                             "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
         {"title": "Referral Form",                       "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",                                  "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrmMTR7W8xBn7lQl"},
-        {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": ""},
+        {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": "https://misty-music-eb4.notion.site/Company-Guidebook-d67f5cd29e0f41e39429c3a3bb7efe5f?source=copy_link"},
         {"title": "Contact Your Program Manager",        "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",                           "url": ""},
     ]
     for resource in static_resources:
