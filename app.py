@@ -1827,8 +1827,17 @@ def show_interns():
         name     = student.get("full_name") or "—"
         sid      = student["id"]
         meetings_str = f"📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
+        # Upcoming cohorts also show whether the placement is confirmed or tentative
+        is_upcoming = cohort_status.get(student.get("cohort", "")) == "Upcoming"
         with st.container(key=f"intern_card_{sid}"):
-            c_name, c_grade, c_tz, c_meet = st.columns([3, 2, 5, 2])
+            if is_upcoming:
+                c_name, c_status, c_grade, c_tz, c_meet = st.columns([3, 2, 2, 5, 2])
+                c_status.markdown(
+                    _status_badge(_normalize_lookup(student.get("status_for_company", ""))),
+                    unsafe_allow_html=True,
+                )
+            else:
+                c_name, c_grade, c_tz, c_meet = st.columns([3, 2, 5, 2])
             c_name.markdown(f"**{name}**")
             c_grade.markdown(f"Grade {grade}")
             c_tz.markdown(f"🌍 {tz}")
