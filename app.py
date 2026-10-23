@@ -208,6 +208,8 @@ PROJECT_FIELDS = {
     "wde_form_link":      "WDE Link to FillOut Forms (from Company Availability)",
     "first_meeting_opt1": "First Meeting Date & Time (Option 1)",
     "wde_upload_form":    "WDE Upload Form [Personalized link - fillout]",
+    "pm_name_students":   "Program Manager Name (from Assigned Students)",
+    "pm_email_students":  "Program Manager Email (from Assigned Students)",
 }
 
 FIRST_MEETING_FORM_URL = "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"
@@ -535,6 +537,12 @@ def get_company_by_email(email):
         return None
     return None
 
+def _split_lookup(val):
+    """Lookup fields can hold several comma-separated values; return them as a list."""
+    if isinstance(val, list):
+        val = ", ".join(str(v) for v in val)
+    return [part.strip().strip('"') for part in str(val or "").split(",") if part.strip().strip('"')]
+
 def _first_url(val):
     """Lookup fields can hold several comma-separated values; return the first URL."""
     if isinstance(val, list):
@@ -624,6 +632,8 @@ def get_projects_for_company(company_name):
                 "wde_form_link":     _first_url(f.get(PROJECT_FIELDS["wde_form_link"], "")),
                 "first_meeting_opt1":f.get(PROJECT_FIELDS["first_meeting_opt1"], ""),
                 "wde_upload_form":   _first_url(f.get(PROJECT_FIELDS["wde_upload_form"], "")),
+                "pm_names_students": _split_lookup(f.get(PROJECT_FIELDS["pm_name_students"], "")),
+                "pm_emails_students":_split_lookup(f.get(PROJECT_FIELDS["pm_email_students"], "")),
                 **week_data,
             })
         return projects
@@ -1053,8 +1063,27 @@ def show_company_overview():
             """,
             unsafe_allow_html=True,
         )
-        st.text_input("Name", placeholder="Add name", key="pm_name")
-        st.text_input("Email", placeholder="Add email", key="pm_email")
+        # Program Manager(s) come from the company's projects (looked up via assigned
+        # students). Prefer currently active projects; fall back to all projects.
+        def _collect_pms(projs):
+            names, emails = [], []
+            for proj in projs:
+                for n in proj.get("pm_names_students", []):
+                    if n not in names:
+                        names.append(n)
+                for e in proj.get("pm_emails_students", []):
+                    if e.lower() not in (x.lower() for x in emails):
+                        emails.append(e)
+            return names, emails
+
+        active_projs = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
+        pm_names, pm_emails = _collect_pms(active_projs)
+        if not (pm_names or pm_emails):
+            pm_names, pm_emails = _collect_pms(projects)
+        st.text_input("Name", value=", ".join(pm_names),
+                      placeholder="Not yet assigned", disabled=True, key="pm_name_display")
+        st.text_input("Email", value=", ".join(pm_emails),
+                      placeholder="Not yet assigned", disabled=True, key="pm_email_display")
 
     st.markdown("---")
 
