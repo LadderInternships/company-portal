@@ -217,11 +217,9 @@ PAYMENT_FIELDS = {
     "cohort_identifier":  "Company\\PTL-Cohort",
     "cohort_start_date":  "Cohort Start Date (from Cohort)",
     "company_projects":   "Company Projects",
-    "nfa_ptl_led":        "# of NFA students (PTL-led)",
-    "nfa_company_led":    "# of NFA students ( Company-led )",
-    "nfa_unlinked":       "# of NFA students (unlinked, but compensate)",
+    "total_interns":      "# of total interns",
+    "fa_interns":         "# of FA Interns",
     "hard_wl":            "# Hard WL students",
-    "nfa_excl_hwl":       "# of NFA students (excluding HWL)",
     "amount_required":    "Company Payment Amount Required (after Summer 2025)",
     "paid_amount":        "FN: Company Paid Amount",
     "payment_status":     "FN: Company Payment Status",
@@ -725,11 +723,9 @@ def get_payments_for_company(company_name):
                 "cohort_start_date": f.get(PAYMENT_FIELDS["cohort_start_date"], ""),
                 "company_projects":  f.get(PAYMENT_FIELDS["company_projects"], ""),
                 "project_ids":       project_ids,
-                "nfa_ptl_led":       _num("nfa_ptl_led"),
-                "nfa_company_led":   _num("nfa_company_led"),
-                "nfa_unlinked":      _num("nfa_unlinked"),
+                "total_interns":     _num("total_interns"),
+                "fa_interns":        _num("fa_interns"),
                 "hard_wl":           _num("hard_wl"),
-                "nfa_excl_hwl":      _num("nfa_excl_hwl"),
                 "amount_required":   _num("amount_required"),
                 "paid_amount":       _num("paid_amount"),
                 "payment_status":    f.get(PAYMENT_FIELDS["payment_status"], ""),
@@ -2202,17 +2198,13 @@ def show_payments():
 
         # ── Student counts ───────────────────────────────────────────
         st.markdown('<p class="info-label">Student Breakdown</p>', unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3 = st.columns(3)
         with c1:
-            st.metric("PTL-led (NFA)", _int_display(p["nfa_ptl_led"]))
+            st.metric("Total Interns", _int_display(p["total_interns"]))
         with c2:
-            st.metric("Company-led (NFA)", _int_display(p["nfa_company_led"]))
+            st.metric("Financial Aid Interns", _int_display(p["fa_interns"]))
         with c3:
-            st.metric("Unlinked (compensate)", _int_display(p["nfa_unlinked"]))
-        with c4:
-            st.metric("Hard White Label", _int_display(p["hard_wl"]))
-        with c5:
-            st.metric("NFA (excl. HWL)", _int_display(p["nfa_excl_hwl"]))
+            st.metric("Affiliate Partner Interns", _int_display(p["hard_wl"]))
 
         # ── Payment summary ──────────────────────────────────────────
         st.markdown('<p class="info-label">Payment Summary</p>', unsafe_allow_html=True)
