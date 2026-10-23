@@ -2008,9 +2008,9 @@ def show_resources():
         {"id": "first_week_availability", "label": "First week meeting availability form", "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ",
          "note": "Submit this before the start of the cohort."},
         {"id": "weekly_update_form",      "label": "Weekly update form",                  "url": MEETING_UPDATE_FORM,
-         "note": "Submit this weekly after your meeting with the intern."},
+         "note": "Submit this weekly after your meeting with the interns."},
         {"id": "midterm_feedback_form",   "label": "Midterm feedback form",               "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc",
-         "note": "Submit this after your 4th meeting with the intern."},
+         "note": "Submit this after your 4th meeting with the interns."},
         {"id": "end_of_cohort_review",    "label": "End of cohort review form",           "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj",
          "note": "Submit this after all interns complete all meetings."},
     ]
