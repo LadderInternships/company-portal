@@ -186,7 +186,7 @@ PROJECT_FIELDS = {
     "timezones":          "Timezones of assigned students",
     "meeting_day":        "Day for Weekly meeting",
     "final_output":       "Final Output of the project",
-    "cohort":             "Cohort of Project",
+    "cohort":             "Which cohort for this project",
     "program_type":       "Program Type",
     "pm_name":            "Program Manager",
     "pm_email":           "Program Manager Email",
