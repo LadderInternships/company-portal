@@ -561,35 +561,50 @@ def _first_url(val):
     return ""
 
 @st.cache_data(ttl=300, show_spinner=False)
-def get_meetings_held_by_project():
-    """Map project record ID → highest 'Number of meeting' submitted for that project."""
+def get_meeting_submissions():
+    """Read the company submissions table and total up meetings held per project.
+
+    Returns a dict with:
+      by_key  – project record ID or lower-cased project name → highest meeting number
+      status  – short human-readable summary (shown to the team in Preview Mode)
+    'Company Project' may be a linked record (record IDs) or text/lookup (project names),
+    so both are indexed. 'Number of meeting' may be a number or text like "Meeting 3".
+    """
     tables = get_tables()
     try:
         records = tables["submissions"].all()
     except Exception as e:
         # Missing table/permissions shouldn't break the portal; trackers fall back to checkboxes
         print(f"Could not load company submissions: {e}")
-        return {}
+        return {"by_key": {}, "status": f"Could not read the submissions table: {e}"}
 
     def _to_int(val):
         if isinstance(val, list):
             return max((_to_int(v) for v in val), default=0)
-        try:
-            return int(float(str(val).strip()))
-        except (ValueError, TypeError):
-            return 0
+        m = re.search(r"\d+", str(val or ""))
+        return int(m.group()) if m else 0
 
-    held: dict = {}
+    by_key: dict = {}
+    rows_with_project = rows_with_number = 0
     for r in records:
         # Match field names ignoring capitalisation
         f = {k.lower(): v for k, v in r["fields"].items()}
-        project_ids = f.get(SUBMISSION_FIELDS["project"].lower()) or []
-        if isinstance(project_ids, str):
-            project_ids = [project_ids]
+        project_refs = _split_lookup(f.get(SUBMISSION_FIELDS["project"].lower()))
         number = _to_int(f.get(SUBMISSION_FIELDS["meeting_number"].lower()))
-        for pid in project_ids:
-            held[pid] = max(held.get(pid, 0), number)
-    return held
+        rows_with_project += bool(project_refs)
+        rows_with_number  += bool(number)
+        for ref in project_refs:
+            key = ref if ref.startswith("rec") else ref.lower()
+            by_key[key] = max(by_key.get(key, 0), number)
+
+    field_names = sorted({k for r in records for k in r["fields"]})
+    status = (
+        f"Submissions table read OK: {len(records)} rows, "
+        f"{rows_with_project} with a '{SUBMISSION_FIELDS['project']}', "
+        f"{rows_with_number} with a '{SUBMISSION_FIELDS['meeting_number']}'. "
+        f"Fields seen: {', '.join(field_names[:25]) or 'none'}"
+    )
+    return {"by_key": by_key, "status": status}
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_projects_for_company(company_name):
@@ -613,14 +628,15 @@ def get_projects_for_company(company_name):
                 return False
             return str(val).strip().lower() == "true"
 
-        meetings_held = get_meetings_held_by_project()
+        meetings_held = get_meeting_submissions()["by_key"]
 
         projects = []
         for r in records:
             f = r["fields"]
             # A meeting counts as held if its checkbox is ticked or the company
             # has submitted at least that many meetings for this project
-            held = meetings_held.get(r["id"], 0)
+            proj_name = str(f.get(PROJECT_FIELDS["name"], "") or "").strip().lower()
+            held = max(meetings_held.get(r["id"], 0), meetings_held.get(proj_name, 0))
             week_data = {
                 f"week_{i}": _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"])) or i <= held
                 for i in range(1, 9)
@@ -675,6 +691,7 @@ def get_projects_for_company(company_name):
                 "wde_form_link":     _first_url(f.get(PROJECT_FIELDS["wde_form_link"], "")),
                 "first_meeting_opt1":f.get(PROJECT_FIELDS["first_meeting_opt1"], ""),
                 "wde_upload_form":   _first_url(f.get(PROJECT_FIELDS["wde_upload_form"], "")),
+                "meetings_from_submissions": held,
                 "pm_names_students": _split_lookup(f.get(PROJECT_FIELDS["pm_name_students"], "")),
                 "pm_emails_students":_split_lookup(f.get(PROJECT_FIELDS["pm_email_students"], "")),
                 **week_data,
@@ -1177,6 +1194,14 @@ def show_company_overview():
     if not active_projects:
         st.info("No active cohorts at this time.")
     else:
+        # Team-only diagnostics for the meeting tracker
+        if st.session_state.get("is_preview"):
+            with st.expander("🔧 Meeting tracker diagnostics (team only)"):
+                st.caption(get_meeting_submissions()["status"])
+                for p in active_projects:
+                    st.caption(f"{p.get('name') or '—'}: {p.get('meetings_from_submissions', 0)} meeting(s) "
+                               f"found in submissions (record ID {p['id']})")
+
         # Group by cohort name
         cohorts: dict = {}
         for p in active_projects:
