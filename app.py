@@ -859,55 +859,94 @@ def check_magic_link_token():
 def show_login_page():
     st.markdown("""
     <style>
+        /* Dark navy page with a centred white login card */
         .stApp { background-color: #0F1B3D; }
-        .main-header { color: #FFFFFF !important; letter-spacing: 0.03em; }
-        .sub-header { color: #A0B0D0 !important; }
-        .stApp h3, .stApp p, .stApp label, .stApp span { color: #FFFFFF !important; }
-        .stApp input {
-            color: #000000 !important;
+        header[data-testid="stHeader"] { background: transparent; }
+        div[class*="st-key-login_card"] {
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 2.5rem 2.5rem 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        div[class*="st-key-login_card"] p,
+        div[class*="st-key-login_card"] label,
+        div[class*="st-key-login_card"] span { color: #1A1A2E; }
+        .login-logo { text-align: center; margin-bottom: 1.75rem; }
+        .login-title {
+            text-align: center; font-size: 1.6rem !important; font-weight: 700;
+            color: #1A1A2E !important; margin: 0 0 0.6rem;
+        }
+        .login-subtitle {
+            text-align: center; font-size: 0.95rem !important;
+            color: #4A5568 !important; margin: 0 0 2rem;
+        }
+        .login-label {
+            font-size: 0.78rem !important; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase; color: #1A1A2E !important; margin: 0 0 0.25rem;
+        }
+        .login-help { font-size: 0.85rem !important; color: #4A5568 !important; margin: 0 0 0.6rem; }
+        div[class*="st-key-login_card"] [data-testid="stForm"] {
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 1rem;
+        }
+        div[class*="st-key-login_card"] input {
+            color: #1A1A2E !important;
             background-color: #FFFFFF !important;
         }
-        .stApp .stButton > button,
-        .stApp [data-testid="stFormSubmitButton"] > button {
+        div[class*="st-key-login_card"] [data-baseweb="input"] {
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 8px !important;
+            background-color: #FFFFFF !important;
+        }
+        div[class*="st-key-login_card"] .stButton > button,
+        div[class*="st-key-login_card"] [data-testid="stFormSubmitButton"] > button {
             background-color: #1B2B5E !important;
             color: #FFFFFF !important;
             border: none !important;
+            border-radius: 8px !important;
+            padding: 0.6rem 1rem !important;
         }
-        .stApp .stButton > button:hover,
-        .stApp [data-testid="stFormSubmitButton"] > button:hover {
+        div[class*="st-key-login_card"] .stButton > button:hover,
+        div[class*="st-key-login_card"] [data-testid="stFormSubmitButton"] > button:hover {
             background-color: #2A3F80 !important;
         }
-        .stApp .stButton > button p,
-        .stApp [data-testid="stFormSubmitButton"] > button p { color: #FFFFFF !important; }
-        .stApp details {
-            background-color: rgba(255,255,255,0.05) !important;
-            border: 1px solid rgba(255,255,255,0.15) !important;
+        div[class*="st-key-login_card"] .stButton > button p,
+        div[class*="st-key-login_card"] [data-testid="stFormSubmitButton"] > button p {
+            color: #FFFFFF !important;
         }
-        .stApp details summary,
-        .stApp details summary * { color: #FFFFFF !important; }
+        div[class*="st-key-login_card"] details {
+            background-color: #F8FAFC !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 10px !important;
+        }
+        div[class*="st-key-login_card"] hr { border-color: #E2E8F0; margin: 1.75rem 0; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown(
-        '<img src="data:image/png;base64,{}" width="320" style="filter: brightness(0) invert(1); margin-bottom: 1rem;">'.format(
-            __import__('base64').b64encode(open('assets/ladder_logo.png', 'rb').read()).decode()
-        ),
-        unsafe_allow_html=True
-    )
-    st.markdown('<p class="main-header">Company Portal</p>', unsafe_allow_html=True)
-    st.markdown("<p class=\"sub-header\">Track your intern's progress through the program</p>", unsafe_allow_html=True)
+    _, col2, _ = st.columns([1, 2, 1])
+    with col2, st.container(key="login_card"):
+        st.markdown(
+            '<div class="login-logo"><img src="data:image/png;base64,{}" width="240"></div>'.format(
+                __import__('base64').b64encode(open('assets/ladder_logo.png', 'rb').read()).decode()
+            ),
+            unsafe_allow_html=True
+        )
+        st.markdown('<p class="login-title">Company Portal</p>', unsafe_allow_html=True)
+        st.markdown("<p class=\"login-subtitle\">Track your intern's progress through the program.</p>",
+                    unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
         if st.session_state.magic_link_sent:
             st.success("Check your email! We've sent you a magic link to access the portal.")
             st.info("The link will expire in 1 hour.")
-            if st.button("Send another link"):
+            if st.button("Send another link", use_container_width=True):
                 st.session_state.magic_link_sent = False
                 st.rerun()
         else:
-            st.markdown("### Supervisor Email")
-            st.markdown("Sign in with the email you registered with Ladder.")
+            st.markdown('<p class="login-label">Email Address</p>', unsafe_allow_html=True)
+            st.markdown('<p class="login-help">Enter the email address registered with Ladder Internships.</p>',
+                        unsafe_allow_html=True)
             with st.form("login_form"):
                 email = st.text_input(
                     "Email Address",
