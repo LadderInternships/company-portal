@@ -961,7 +961,7 @@ def show_login_page():
                             st.session_state.magic_link_sent = True
                             st.rerun()
                     else:
-                        st.error("Email not found. Please use the supervisor email you registered with Lumiere Ladder.")
+                        st.error("Email not found. Please use the supervisor email you registered with Ladder.")
 
         st.markdown("---")
 
