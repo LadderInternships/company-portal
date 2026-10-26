@@ -4,6 +4,7 @@ from datetime import datetime
 import resend
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import re
+import os
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -31,7 +32,13 @@ def get_tables():
         "projects": base.table(st.secrets["PROJECTS_TABLE"]),
         "students": base.table(st.secrets["STUDENTS_TABLE"]),
         "payments": base.table(st.secrets["PAYMENT_TABLE"]),
-        "submissions": base.table(st.secrets.get("SUBMISSIONS_TABLE") or "Companies's submissions"),
+        # Companies's submissions table (by ID, so renames don't break it); can be overridden
+        # with a SUBMISSIONS_TABLE env var / secret
+        "submissions": base.table(
+            os.environ.get("SUBMISSIONS_TABLE", "").strip()
+            or str(st.secrets.get("SUBMISSIONS_TABLE", "") or "").strip()
+            or "tbl6fI0oqCiZv2Ez8"
+        ),
     }
 
 # ─────────────────────────────────────────────
