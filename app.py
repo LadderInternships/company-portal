@@ -31,6 +31,7 @@ def get_tables():
         "projects": base.table(st.secrets["PROJECTS_TABLE"]),
         "students": base.table(st.secrets["STUDENTS_TABLE"]),
         "payments": base.table(st.secrets["PAYMENT_TABLE"]),
+        "submissions": base.table(st.secrets.get("SUBMISSIONS_TABLE") or "Companies's submissions"),
     }
 
 # ─────────────────────────────────────────────
@@ -226,6 +227,12 @@ PAYMENT_FIELDS = {
     "paid_amount":        "FN: Company Paid Amount",
     "payment_status":     "FN: Company Payment Status",
     "onboarding_status":  "Onboarding Status - Payment Platform",
+}
+
+# Company weekly meeting submissions (one row per meeting update)
+SUBMISSION_FIELDS = {
+    "project":            "Company Project",
+    "meeting_number":     "Number of meeting",
 }
 
 STUDENT_FIELDS = {
@@ -554,6 +561,37 @@ def _first_url(val):
     return ""
 
 @st.cache_data(ttl=300, show_spinner=False)
+def get_meetings_held_by_project():
+    """Map project record ID → highest 'Number of meeting' submitted for that project."""
+    tables = get_tables()
+    try:
+        records = tables["submissions"].all()
+    except Exception as e:
+        # Missing table/permissions shouldn't break the portal; trackers fall back to checkboxes
+        print(f"Could not load company submissions: {e}")
+        return {}
+
+    def _to_int(val):
+        if isinstance(val, list):
+            return max((_to_int(v) for v in val), default=0)
+        try:
+            return int(float(str(val).strip()))
+        except (ValueError, TypeError):
+            return 0
+
+    held: dict = {}
+    for r in records:
+        # Match field names ignoring capitalisation
+        f = {k.lower(): v for k, v in r["fields"].items()}
+        project_ids = f.get(SUBMISSION_FIELDS["project"].lower()) or []
+        if isinstance(project_ids, str):
+            project_ids = [project_ids]
+        number = _to_int(f.get(SUBMISSION_FIELDS["meeting_number"].lower()))
+        for pid in project_ids:
+            held[pid] = max(held.get(pid, 0), number)
+    return held
+
+@st.cache_data(ttl=300, show_spinner=False)
 def get_projects_for_company(company_name):
     """Get all Company Projects belonging to a given company."""
     tables = get_tables()
@@ -575,11 +613,16 @@ def get_projects_for_company(company_name):
                 return False
             return str(val).strip().lower() == "true"
 
+        meetings_held = get_meetings_held_by_project()
+
         projects = []
         for r in records:
             f = r["fields"]
+            # A meeting counts as held if its checkbox is ticked or the company
+            # has submitted at least that many meetings for this project
+            held = meetings_held.get(r["id"], 0)
             week_data = {
-                f"week_{i}": _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"]))
+                f"week_{i}": _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"])) or i <= held
                 for i in range(1, 9)
             }
             # confirmed_signups comes back as a string; coerce safely

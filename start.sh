@@ -12,5 +12,6 @@ RESEND_API_KEY   = "${RESEND_API_KEY}"
 FROM_EMAIL       = "${FROM_EMAIL}"
 APP_URL          = "${APP_URL}"
 ADMIN_KEY        = "${ADMIN_KEY}"
+SUBMISSIONS_TABLE = "${SUBMISSIONS_TABLE}"
 EOF
 streamlit run app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
