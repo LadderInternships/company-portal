@@ -1224,7 +1224,7 @@ def show_company_overview():
                     occurred = proj.get(f"week_{w}", False)
                     bg    = "#22c55e" if occurred else "#e5e7eb"
                     color = "#fff"    if occurred else "#9ca3af"
-                    check = "✓"       if occurred else str(w)
+                    check = str(w)
                     weeks_html += (
                         f'<div style="width:36px;height:36px;border-radius:8px;background:{bg};'
                         f'display:flex;align-items:center;justify-content:center;'
@@ -1390,9 +1390,9 @@ def show_projects():
                     done = project.get(f"week_{i}", False)
                     col.markdown(
                         f'<div style="text-align:center;padding:0.4rem 0;border-radius:8px;'
-                        f'background:{"#1B2B5E" if done else "#F0F2F6"};'
+                        f'background:{"#22c55e" if done else "#F0F2F6"};'
                         f'color:{"#fff" if done else "#999"};font-size:0.78rem;font-weight:600;">'
-                        f'W{i}<br>{"✓" if done else "·"}</div>',
+                        f'W{i}</div>',
                         unsafe_allow_html=True,
                     )
             with form_col:
