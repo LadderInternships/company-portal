@@ -639,9 +639,9 @@ def get_projects_for_company(company_name):
                 total_signups = 0
 
             def _is_active(val):
-                if isinstance(val, list):
-                    return any(str(v).strip().lower() in ("true", "active") for v in val)
-                return str(val).strip().lower() in ("true", "active")
+                # Lookups with several linked records come back comma-joined
+                # (e.g. "true, true"), so check each value separately
+                return any(v.lower() in ("true", "active") for v in _split_lookup(val))
 
             is_project_active = _is_active(f.get(PROJECT_FIELDS["is_project_active"], ""))
             is_cohort_active  = _is_active(f.get(PROJECT_FIELDS["is_cohort_active"],  ""))
