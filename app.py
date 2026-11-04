@@ -80,14 +80,15 @@ def verify_session_token(token: str):
     except (SignatureExpired, BadSignature):
         return None, None
 
-def _hydrate_session(company):
+def _hydrate_session(company, login_email=None):
     """Populate session_state from a company dict."""
     st.session_state.authenticated     = True
     st.session_state.company_name      = company["name"]
     st.session_state.company_unique_id = company["unique_id"]
     st.session_state.company_id        = company["id"]
     st.session_state.supervisor_name   = company["supervisor_name"]
-    st.session_state.supervisor_email  = company["supervisor_email"]
+    # The company may list several supervisor emails; keep the one that signed in
+    st.session_state.supervisor_email  = login_email or (_split_emails(company["supervisor_email"]) or [""])[0]
 
 def check_session_token():
     """
@@ -106,7 +107,7 @@ def check_session_token():
         return
     company = get_company_by_email(email)
     if company:
-        _hydrate_session(company)
+        _hydrate_session(company, email)
         st.session_state.is_preview = bool(is_preview)
 
 def send_magic_link(email, company_name, supervisor_name):
@@ -495,15 +496,36 @@ for _key, _default in [
 # ─────────────────────────────────────────────
 # DATA FUNCTIONS
 # ─────────────────────────────────────────────
+def _split_emails(val):
+    """Split a Supervisor Email cell that may hold several addresses
+    (separated by commas, semicolons, spaces or new lines) into lower-cased emails."""
+    if isinstance(val, list):
+        val = ", ".join(str(v) for v in val)
+    return [e.lower() for e in re.split(r"[,;\s]+", str(val or "")) if "@" in e]
+
 @st.cache_data(ttl=600, show_spinner=False)
 def get_company_by_email(email):
-    """Find a company record by supervisor email."""
+    """Find a company record whose Supervisor Email contains this email.
+
+    The field may list several supervisors (e.g. "a@x.com, b@x.com"); each one
+    can sign in on their own.
+    """
     tables = get_tables()
     try:
+        wanted = _split_emails(email)
+        if not wanted:
+            return None
+        email = wanted[0]
         safe = email.replace("'", "\\'")
-        records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
+        # Airtable narrows the candidates; the exact match is checked below so
+        # "an@x.com" doesn't match "van@x.com"
+        candidates = tables["companies"].all(
+            formula=f"FIND('{safe}', LOWER({{Supervisor Email}})) > 0"
         )
+        records = [
+            c for c in candidates
+            if email in _split_emails(c["fields"].get(COMPANY_FIELDS["supervisor_email"], ""))
+        ]
         if records:
             r = records[0]
             f = r["fields"]
@@ -908,7 +930,7 @@ def check_magic_link_token():
         if email:
             company = get_company_by_email(email)
             if company:
-                _hydrate_session(company)
+                _hydrate_session(company, email)
                 st.session_state.is_preview = False
                 # Issue a 24-hour session token and embed it in the URL so the
                 # session survives server restarts without requiring a new login.
@@ -1046,11 +1068,12 @@ def show_login_page():
                     with st.spinner("Looking up company..."):
                         company = get_company_by_email(preview_email)
                     if company:
-                        _hydrate_session(company)
+                        preview_login = (_split_emails(preview_email) or [""])[0]
+                        _hydrate_session(company, preview_login)
                         st.session_state.is_preview = True
                         # Issue a session token so preview survives server restarts.
                         # Preview sessions are also limited to 24 hours.
-                        session_tok = generate_session_token(company["supervisor_email"], is_preview=True)
+                        session_tok = generate_session_token(preview_login, is_preview=True)
                         st.query_params["session"] = session_tok
                         st.rerun()
                     else:
