@@ -1114,6 +1114,29 @@ def _get_company_unique_id():
             st.session_state.company_unique_id = company["unique_id"]
     return st.session_state.company_unique_id
 
+def get_program_managers(projects):
+    """Return (names, emails) of the company's Program Manager(s).
+
+    They come from the company's projects (looked up via assigned students),
+    de-duplicated. Prefer currently active projects; fall back to all projects.
+    """
+    def _collect(projs):
+        names, emails = [], []
+        for proj in projs:
+            for n in proj.get("pm_names_students", []):
+                if n not in names:
+                    names.append(n)
+            for e in proj.get("pm_emails_students", []):
+                if e.lower() not in (x.lower() for x in emails):
+                    emails.append(e)
+        return names, emails
+
+    active = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
+    names, emails = _collect(active)
+    if not (names or emails):
+        names, emails = _collect(projects)
+    return names, emails
+
 def show_company_overview():
     company_name      = st.session_state.company_name
     company_unique_id = _get_company_unique_id()
@@ -1205,23 +1228,7 @@ def show_company_overview():
             """,
             unsafe_allow_html=True,
         )
-        # Program Manager(s) come from the company's projects (looked up via assigned
-        # students). Prefer currently active projects; fall back to all projects.
-        def _collect_pms(projs):
-            names, emails = [], []
-            for proj in projs:
-                for n in proj.get("pm_names_students", []):
-                    if n not in names:
-                        names.append(n)
-                for e in proj.get("pm_emails_students", []):
-                    if e.lower() not in (x.lower() for x in emails):
-                        emails.append(e)
-            return names, emails
-
-        active_projs = [p for p in projects if p.get("is_project_active") and p.get("is_cohort_active")]
-        pm_names, pm_emails = _collect_pms(active_projs)
-        if not (pm_names or pm_emails):
-            pm_names, pm_emails = _collect_pms(projects)
+        pm_names, pm_emails = get_program_managers(projects)
         st.text_input("Name", value=", ".join(pm_names),
                       placeholder="Not yet assigned", disabled=True, key="pm_name_display")
         st.text_input("Email", value=", ".join(pm_emails),
@@ -2285,12 +2292,26 @@ def show_resources():
         {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": "https://misty-music-eb4.notion.site/Company-Guidebook-d67f5cd29e0f41e39429c3a3bb7efe5f?source=copy_link"},
         {"title": "Contact Your Program Manager",        "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",                           "url": ""},
     ]
+    pm_names, pm_emails = get_program_managers(projects)
     for resource in static_resources:
         link_html = (
             f'<a href="{resource["url"]}" target="_blank" style="color:#1B2B5E;text-decoration:none;font-weight:600;">Open &rarr;</a>'
             if resource["url"] else
             '<span style="color:#999;font-size:0.85rem;">Link coming soon</span>'
         )
+        if resource["title"] == "Contact Your Program Manager":
+            # Same Program Manager details as the Company Dashboard card
+            if pm_names or pm_emails:
+                email_links = ", ".join(
+                    f'<a href="mailto:{e}" style="color:#1B2B5E;font-weight:600;">{e}</a>' for e in pm_emails
+                )
+                link_html = (
+                    f'<p style="margin:0;font-size:0.93rem;color:#1A1A2E;">'
+                    f'<strong>{", ".join(pm_names) or "—"}</strong>'
+                    f'{" &nbsp;·&nbsp; " + email_links if email_links else ""}</p>'
+                )
+            else:
+                link_html = '<span style="color:#999;font-size:0.85rem;">Not yet assigned</span>'
         st.markdown(
             f'<div style="background:#FAFAFA;border:1px solid #E5E7EB;border-radius:10px;padding:1.25rem;margin-bottom:1rem;">'
             f'<h4 style="margin:0 0 0.35rem 0;">{resource["title"]}</h4>'
