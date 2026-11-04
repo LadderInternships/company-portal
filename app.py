@@ -80,14 +80,16 @@ def verify_session_token(token: str):
     except (SignatureExpired, BadSignature):
         return None, None
 
-def _hydrate_session(company):
+def _hydrate_session(company, login_email=None):
     """Populate session_state from a company dict."""
     st.session_state.authenticated     = True
     st.session_state.company_name      = company["name"]
     st.session_state.company_unique_id = company["unique_id"]
     st.session_state.company_id        = company["id"]
     st.session_state.supervisor_name   = company["supervisor_name"]
-    st.session_state.supervisor_email  = company["supervisor_email"]
+    # The company may list several supervisor emails; keep the one that signed in
+    st.session_state.supervisor_email  = login_email or (_split_emails(company["supervisor_email"]) or [""])[0]
+    st.session_state.login_is_poc      = company.get("login_role") == "poc"
 
 def check_session_token():
     """
@@ -106,7 +108,7 @@ def check_session_token():
         return
     company = get_company_by_email(email)
     if company:
-        _hydrate_session(company)
+        _hydrate_session(company, email)
         st.session_state.is_preview = bool(is_preview)
 
 def send_magic_link(email, company_name, supervisor_name):
@@ -484,6 +486,7 @@ for _key, _default in [
     ("supervisor_name",   None),
     ("supervisor_email",  None),
     ("is_preview",        False),
+    ("login_is_poc",      False),
     ("magic_link_sent",   False),
     ("team_unlocked",     False),
     ("selected_intern_id", None),
@@ -495,17 +498,47 @@ for _key, _default in [
 # ─────────────────────────────────────────────
 # DATA FUNCTIONS
 # ─────────────────────────────────────────────
+def _split_emails(val):
+    """Split a Supervisor Email cell that may hold several addresses
+    (separated by commas, semicolons, spaces or new lines) into lower-cased emails."""
+    if isinstance(val, list):
+        val = ", ".join(str(v) for v in val)
+    return [e.lower() for e in re.split(r"[,;\s]+", str(val or "")) if "@" in e]
+
 @st.cache_data(ttl=600, show_spinner=False)
 def get_company_by_email(email):
-    """Find a company record by supervisor email."""
+    """Find a company record whose Supervisor Email or POC Email contains this email.
+
+    Either field may list several people (e.g. "a@x.com, b@x.com"); each one
+    can sign in on their own.
+    """
     tables = get_tables()
     try:
+        wanted = _split_emails(email)
+        if not wanted:
+            return None
+        email = wanted[0]
         safe = email.replace("'", "\\'")
-        records = tables["companies"].all(
-            formula=f"LOWER({{Supervisor Email}}) = LOWER('{safe}')"
+        # Airtable narrows the candidates; the exact match is checked below so
+        # "an@x.com" doesn't match "van@x.com"
+        candidates = tables["companies"].all(
+            formula=(f"OR(FIND('{safe}', LOWER({{Supervisor Email}})) > 0, "
+                     f"FIND('{safe}', LOWER({{POC Email}})) > 0)")
         )
+
+        def _role(c):
+            fields = c["fields"]
+            if email in _split_emails(fields.get(COMPANY_FIELDS["supervisor_email"], "")):
+                return "supervisor"
+            if email in _split_emails(fields.get(COMPANY_FIELDS["poc_email"], "")):
+                return "poc"
+            return None
+
+        # Prefer a company where this person is the supervisor
+        records = sorted((c for c in candidates if _role(c)), key=lambda c: _role(c) != "supervisor")
         if records:
             r = records[0]
+            login_role = _role(r)
             f = r["fields"]
             # Second fetch with cell_format="string" to resolve linked field
             # display names (e.g. Company Industry) without affecting the raw
@@ -538,6 +571,7 @@ def get_company_by_email(email):
                 "website":            f.get(COMPANY_FIELDS["website"], ""),
                 "supervisor_linkedin":f.get(COMPANY_FIELDS["supervisor_linkedin"], ""),
                 "poc_email":          f.get(COMPANY_FIELDS["poc_email"], ""),
+                "login_role":         login_role,
                 "poc_title":          f.get(COMPANY_FIELDS["poc_title"], ""),
                 "address":            f.get(COMPANY_FIELDS["address"], ""),
                 "bank_account_name":  f.get(COMPANY_FIELDS["bank_account_name"], ""),
@@ -908,7 +942,7 @@ def check_magic_link_token():
         if email:
             company = get_company_by_email(email)
             if company:
-                _hydrate_session(company)
+                _hydrate_session(company, email)
                 st.session_state.is_preview = False
                 # Issue a 24-hour session token and embed it in the URL so the
                 # session survives server restarts without requiring a new login.
@@ -1024,7 +1058,8 @@ def show_login_page():
                 if submitted and email:
                     company = get_company_by_email(email)
                     if company:
-                        if send_magic_link(email, company["name"], company["supervisor_name"]):
+                        greet = "there" if company.get("login_role") == "poc" else company["supervisor_name"]
+                        if send_magic_link(email, company["name"], greet):
                             st.session_state.magic_link_sent = True
                             st.rerun()
                     else:
@@ -1046,11 +1081,12 @@ def show_login_page():
                     with st.spinner("Looking up company..."):
                         company = get_company_by_email(preview_email)
                     if company:
-                        _hydrate_session(company)
+                        preview_login = (_split_emails(preview_email) or [""])[0]
+                        _hydrate_session(company, preview_login)
                         st.session_state.is_preview = True
                         # Issue a session token so preview survives server restarts.
                         # Preview sessions are also limited to 24 hours.
-                        session_tok = generate_session_token(company["supervisor_email"], is_preview=True)
+                        session_tok = generate_session_token(preview_login, is_preview=True)
                         st.query_params["session"] = session_tok
                         st.rerun()
                     else:
@@ -1087,7 +1123,7 @@ def show_company_overview():
 
     st.markdown('<p class="main-header">Company Dashboard</p>', unsafe_allow_html=True)
     st.markdown(
-        f'<p class="sub-header">Welcome back, {st.session_state.supervisor_name}! '
+        f'<p class="sub-header">Welcome back{"" if st.session_state.get("login_is_poc") else ", " + str(st.session_state.supervisor_name)}! '
         f'Here\'s a summary of your Ladder internship program.</p>',
         unsafe_allow_html=True
     )
@@ -2476,6 +2512,7 @@ def show_dashboard():
             st.session_state.supervisor_name     = None
             st.session_state.supervisor_email    = None
             st.session_state.is_preview          = False
+            st.session_state.login_is_poc        = False
             st.session_state.selected_intern_id  = None
             st.session_state.selected_project_id = None
             st.session_state.pop("saved_project_cohort", None)
