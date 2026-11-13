@@ -671,15 +671,28 @@ def get_projects_for_company(company_name):
 
         meetings_held = get_meeting_submissions()["by_key"]
 
+        def _name_key(rec):
+            return str(rec["fields"].get(PROJECT_FIELDS["name"], "") or "").strip().lower()
+
+        # Project names this company uses more than once (e.g. the same project
+        # run in two cohorts); matching submissions by name would be ambiguous
+        name_counts: dict = {}
+        for rec in records:
+            name_counts[_name_key(rec)] = name_counts.get(_name_key(rec), 0) + 1
+
         projects = []
         for r in records:
             f = r["fields"]
             # A meeting counts as held if its checkbox is ticked or the company
             # has submitted at least that many meetings for this project
-            proj_name = str(f.get(PROJECT_FIELDS["name"], "") or "").strip().lower()
-            held = max(meetings_held.get(r["id"], 0), meetings_held.get(proj_name, 0))
+            proj_name = _name_key(r)
+            held_by_id = meetings_held.get(r["id"], 0)
+            name_shared = name_counts.get(proj_name, 0) > 1
+            held_by_name = 0 if name_shared else meetings_held.get(proj_name, 0)
+            held = max(held_by_id, held_by_name)
+            checkbox_weeks = [i for i in range(1, 9) if _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"]))]
             week_data = {
-                f"week_{i}": _is_checked(f.get(PROJECT_FIELDS[f"week_{i}"])) or i <= held
+                f"week_{i}": i in checkbox_weeks or i <= held
                 for i in range(1, 9)
             }
             # confirmed_signups comes back as a string; coerce safely
@@ -733,6 +746,13 @@ def get_projects_for_company(company_name):
                 "first_meeting_opt1":f.get(PROJECT_FIELDS["first_meeting_opt1"], ""),
                 "wde_upload_form":   _first_url(f.get(PROJECT_FIELDS["wde_upload_form"], "")),
                 "meetings_from_submissions": held,
+                "meeting_sources": {
+                    "by_id": held_by_id,
+                    "by_name": held_by_name,
+                    "name_shared": name_shared,
+                    "name_matches_ignored": meetings_held.get(proj_name, 0) if name_shared else 0,
+                    "checkbox_weeks": checkbox_weeks,
+                },
                 "pm_names_students": _split_lookup(f.get(PROJECT_FIELDS["pm_name_students"], "")),
                 "pm_emails_students":_split_lookup(f.get(PROJECT_FIELDS["pm_email_students"], "")),
                 **week_data,
@@ -1249,8 +1269,15 @@ def show_company_overview():
             with st.expander("🔧 Meeting tracker diagnostics (team only)"):
                 st.caption(get_meeting_submissions()["status"])
                 for p in active_projects:
-                    st.caption(f"{p.get('name') or '—'}: {p.get('meetings_from_submissions', 0)} meeting(s) "
-                               f"found in submissions (record ID {p['id']})")
+                    src = p.get("meeting_sources", {})
+                    by_name = (f"ignored {src.get('name_matches_ignored', 0)} (name shared by several projects)"
+                               if src.get("name_shared") else str(src.get("by_name", 0)))
+                    st.caption(
+                        f"{p.get('name') or '—'} ({p.get('cohort') or 'no cohort'}, record {p['id']}): "
+                        f"submissions linked to this record → {src.get('by_id', 0)}; "
+                        f"submissions matched by name → {by_name}; "
+                        f"ticked 'Week N - Meeting Occurred' boxes → {src.get('checkbox_weeks') or 'none'}"
+                    )
 
         # Group by cohort name
         cohorts: dict = {}
