@@ -2324,13 +2324,13 @@ def show_resources():
     # ── Static resource links (always visible) ──
     st.markdown("### All Resources")
     static_resources = [
+        {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": "https://misty-music-eb4.notion.site/Company-Guidebook-d67f5cd29e0f41e39429c3a3bb7efe5f?source=copy_link"},
         {"title": "Project Builder Form",                "description": "Set up and submit your intern project details for the upcoming cohort.",                                         "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrZp5Cbtrsmw4jL7"},
         {"title": "First Week Meeting Availability Form","description": "Share your availability so we can schedule the kick-off meeting with your intern.",                              "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrNg32lyubzsM2UZ"},
         {"title": "Weekly Update Form",                  "description": "Submit your notes and intern progress after each weekly meeting.",                                               "url": MEETING_UPDATE_FORM},
         {"title": "Midterm Feedback Form",               "description": "Share your midterm feedback on your intern's performance halfway through the program.",                          "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrOrbaGu6lWkJ2mc"},
         {"title": "End of Cohort Review Form",           "description": "Submit your final review and evaluation of your intern at the end of the program.",                             "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrGe1v6UuOpXZfAj"},
         {"title": "Referral Form",                       "description": "Know a company that would be a great fit for Ladder? Submit a referral here.",                                  "url": "https://airtable.com/appx1OFdMpDfxtEkR/shrmMTR7W8xBn7lQl"},
-        {"title": "Ladder Supervisor Guide",             "description": "Everything you need to know about hosting a Ladder intern — expectations, best practices, and program timelines.","url": "https://misty-music-eb4.notion.site/Company-Guidebook-d67f5cd29e0f41e39429c3a3bb7efe5f?source=copy_link"},
         {"title": "Contact Your Program Manager",        "description": "Have a question or concern about your intern? Reach out to the Ladder program team.",                           "url": ""},
     ]
     pm_names, pm_emails = get_program_managers(projects)
