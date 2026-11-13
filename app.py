@@ -2126,38 +2126,36 @@ def show_interns():
         }
         EMOJI = {"Active": "🟢", "Upcoming": "🔵", "Inactive": "⚫"}
 
+        def _is_tentative(student):
+            return "tentative" in _normalize_lookup(student.get("status_for_company", "")).lower()
+
+        def _render_status_section(label, cohort_list, groups, key_prefix="", expanded=False, marker_cls=None):
+            total = sum(len(groups.get(c, [])) for c in cohort_list)
+            if not total:
+                return
+            if marker_cls:
+                # Invisible marker div so CSS can colour the next expander
+                st.markdown(f'<div class="{marker_cls}" style="display:none;"></div>', unsafe_allow_html=True)
+            with st.expander(f"{label}  ·  {total} intern{'s' if total != 1 else ''}", expanded=expanded):
+                for cohort_name in cohort_list:
+                    if groups.get(cohort_name):
+                        _render_cohort_section(cohort_name, groups[cohort_name], key_prefix)
+
         for status in ("Active", "Upcoming", "Inactive"):
             cohort_list = status_cohort_map[status]
             if not cohort_list:
                 continue
-            total_interns = sum(len(cohort_map.get(c, [])) for c in cohort_list)
-            intern_str    = f"{total_interns} intern{'s' if total_interns != 1 else ''}"
-            exp_label     = f"{EMOJI[status]}  {status.upper()}  ·  {intern_str}"
-            # Invisible marker div so CSS can colour the next expander
-            marker_cls    = MARKER_CLASS[status]
-            st.markdown(f'<div class="{marker_cls}" style="display:none;"></div>', unsafe_allow_html=True)
-            with st.expander(exp_label, expanded=(status == "Active")):
-                for cohort_name in cohort_list:
-                    group = cohort_map.get(cohort_name, [])
-                    if not group:
-                        continue
-                    _render_cohort_section(cohort_name, group)
-
-            # Tentative interns across all active cohorts, listed right after ACTIVE
             if status == "Active":
-                tentative_map = {
-                    c: [s for s in cohort_map.get(c, [])
-                        if "tentative" in _normalize_lookup(s.get("status_for_company", "")).lower()]
-                    for c in cohort_list
-                }
-                tentative_total = sum(len(v) for v in tentative_map.values())
-                if tentative_total:
-                    t_str = f"{tentative_total} intern{'s' if tentative_total != 1 else ''}"
-                    with st.expander(f"🟡  TENTATIVE  ·  {t_str}"):
-                        for cohort_name in cohort_list:
-                            if tentative_map[cohort_name]:
-                                _render_cohort_section(cohort_name, tentative_map[cohort_name],
-                                                       key_prefix="tentative_")
+                # Active cohorts are split: confirmed interns under ACTIVE,
+                # tentative interns in their own TENTATIVE section
+                confirmed = {c: [s for s in cohort_map.get(c, []) if not _is_tentative(s)] for c in cohort_list}
+                tentative = {c: [s for s in cohort_map.get(c, []) if _is_tentative(s)] for c in cohort_list}
+                _render_status_section(f"{EMOJI['Active']}  ACTIVE", cohort_list, confirmed,
+                                       expanded=True, marker_cls=MARKER_CLASS["Active"])
+                _render_status_section("🟡  TENTATIVE", cohort_list, tentative, key_prefix="tentative_")
+            else:
+                _render_status_section(f"{EMOJI[status]}  {status.upper()}", cohort_list, cohort_map,
+                                       marker_cls=MARKER_CLASS[status])
 
     else:
         # Specific cohort selected — show header then project sub-groups
