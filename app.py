@@ -2028,7 +2028,7 @@ def show_interns():
 
     # ── Render helpers ────────────────────────────────────────────────
 
-    def _render_intern_card(student):
+    def _render_intern_card(student, key_prefix=""):
         """Card with aligned name / grade / time zone / meetings columns; the whole card is clickable."""
         meetings = parse_meetings_count(student.get("meetings_count", 0))
         tz       = student.get("timezone") or "—"
@@ -2038,7 +2038,7 @@ def show_interns():
         meetings_str = f"📅 {meetings} meeting{'s' if meetings != 1 else ''} →"
         # Upcoming cohorts also show whether the placement is confirmed or tentative
         is_upcoming = cohort_status.get(student.get("cohort", "")) == "Upcoming"
-        with st.container(key=f"intern_card_{sid}"):
+        with st.container(key=f"intern_card_{key_prefix}{sid}"):
             if is_upcoming:
                 c_name, c_status, c_grade, c_tz, c_meet = st.columns([3, 2, 2, 5, 2])
                 c_status.markdown(
@@ -2051,12 +2051,12 @@ def show_interns():
             c_grade.markdown(f"Grade {grade}")
             c_tz.markdown(f"🌍 {tz}")
             c_meet.markdown(meetings_str)
-            if st.button(f"Open {name}", key=f"intern_{sid}", use_container_width=True):
+            if st.button(f"Open {name}", key=f"intern_{key_prefix}{sid}", use_container_width=True):
                 st.session_state.selected_intern_id = sid
                 st.query_params["intern"] = sid
                 st.rerun()
 
-    def _render_project_group(project_name, interns):
+    def _render_project_group(project_name, interns, key_prefix=""):
         label      = project_name if project_name else "Unassigned Project"
         count      = len(interns)
         count_str  = f"{count} intern{'s' if count != 1 else ''}"
@@ -2065,9 +2065,9 @@ def show_interns():
             unsafe_allow_html=True,
         )
         for student in sorted(interns, key=lambda s: (s.get("full_name") or "").lower()):
-            _render_intern_card(student)
+            _render_intern_card(student, key_prefix)
 
-    def _render_by_project(interns):
+    def _render_by_project(interns, key_prefix=""):
         proj_map: dict = {}
         for s in interns:
             proj = _get_project_display_name(s)
@@ -2075,9 +2075,9 @@ def show_interns():
         named_projs   = sorted([k for k in proj_map if k],  key=str.lower)
         unnamed_projs = [k for k in proj_map if not k]
         for proj in named_projs + unnamed_projs:
-            _render_project_group(proj, proj_map[proj])
+            _render_project_group(proj, proj_map[proj], key_prefix)
 
-    def _render_cohort_section(cohort_name, interns):
+    def _render_cohort_section(cohort_name, interns, key_prefix=""):
         raw_str     = cohort_raw_map.get(cohort_name, "")
         launch_date = _format_launch_date(raw_str) if raw_str else "TBD"
         display     = cohort_name if cohort_name else "No Cohort"
@@ -2093,7 +2093,7 @@ def show_interns():
             '<hr style="margin:0.75rem 0 0.5rem 0;border:none;border-top:2px solid #E5E7EB;">',
             unsafe_allow_html=True,
         )
-        _render_by_project(interns)
+        _render_by_project(interns, key_prefix)
 
     STATUS_LABELS = {
         "Active":   ("Active",   "status-active"),
@@ -2142,6 +2142,22 @@ def show_interns():
                     if not group:
                         continue
                     _render_cohort_section(cohort_name, group)
+
+            # Tentative interns across all active cohorts, listed right after ACTIVE
+            if status == "Active":
+                tentative_map = {
+                    c: [s for s in cohort_map.get(c, [])
+                        if "tentative" in _normalize_lookup(s.get("status_for_company", "")).lower()]
+                    for c in cohort_list
+                }
+                tentative_total = sum(len(v) for v in tentative_map.values())
+                if tentative_total:
+                    t_str = f"{tentative_total} intern{'s' if tentative_total != 1 else ''}"
+                    with st.expander(f"🟡  TENTATIVE  ·  {t_str}"):
+                        for cohort_name in cohort_list:
+                            if tentative_map[cohort_name]:
+                                _render_cohort_section(cohort_name, tentative_map[cohort_name],
+                                                       key_prefix="tentative_")
 
     else:
         # Specific cohort selected — show header then project sub-groups
