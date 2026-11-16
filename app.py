@@ -305,6 +305,8 @@ STUDENT_FIELDS = {
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
+    /* Hide the link icon Streamlit adds next to headings */
+    [data-testid="stHeaderActionElements"] { display: none !important; }
     .main-header {
         font-size: 2.2rem;
         font-weight: 700;
@@ -1754,21 +1756,33 @@ def show_projects():
                     launch_date = _format_launch_date(raw)
                     break
 
-            st.markdown(
-                f'<div style="margin:2rem 0 0.25rem 0;">'
-                f'<h3 style="margin:0;color:#1B2B5E;">{display_name}</h3>'
-                f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
-                f'Expected Launch Date: {launch_date}</p>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
-                unsafe_allow_html=True,
-            )
+            # Active and upcoming cohorts are shown open; past cohorts (and
+            # projects with no cohort) are collapsed until toggled
+            is_active   = any(p.get("is_cohort_active") for p in cohort_projects)
+            start       = _cohort_sort_key(cohort_name)[1] if cohort_name else datetime.min
+            is_upcoming = start > datetime.now()
 
-            for project in cohort_projects:
-                _render_project_card(project)
+            if is_active or is_upcoming:
+                st.markdown(
+                    f'<div style="margin:2rem 0 0.25rem 0;">'
+                    f'<h3 style="margin:0;color:#1B2B5E;">{display_name}</h3>'
+                    f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
+                    f'Expected Launch Date: {launch_date}</p>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
+                    unsafe_allow_html=True,
+                )
+                for project in cohort_projects:
+                    _render_project_card(project)
+            else:
+                n = len(cohort_projects)
+                with st.expander(f"{display_name}  ·  {n} project{'s' if n != 1 else ''}"):
+                    st.caption(f"Launch Date: {launch_date}")
+                    for project in cohort_projects:
+                        _render_project_card(project)
     else:
         st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
 
@@ -2419,12 +2433,15 @@ def show_payments():
         unsafe_allow_html=True,
     )
 
-    company = get_company_by_email(st.session_state.supervisor_email)
+    company  = get_company_by_email(st.session_state.supervisor_email)
+    payments = get_payments_for_company(st.session_state.company_name)
     if company:
         bank  = company.get("bank_account_name", "")
         email = company.get("payment_email", "")
         intl  = company.get("us_or_intl", "")
-        c1, c2 = st.columns(2)
+        # Gusto onboarding is per company: show the most recent cohort's status once
+        gusto = next((p["onboarding_status"] for p in payments if p.get("onboarding_status")), "")
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown(
                 '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
@@ -2441,9 +2458,16 @@ def show_payments():
                 '</div>',
                 unsafe_allow_html=True,
             )
+        with c3:
+            st.markdown(
+                '<div style="background:#F8F9FA;border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;">'
+                '<p style="margin:0;font-size:0.78rem;color:#555;text-transform:uppercase;letter-spacing:0.05em;">Gusto Onboarding</p>'
+                f'<p style="margin:0.25rem 0 0;font-size:1rem;font-weight:600;color:#1B2B5E;">{gusto or "—"}</p>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
         st.markdown("---")
 
-    payments = get_payments_for_company(st.session_state.company_name)
 
     if not payments:
         st.info("No payment records found for your company.")
@@ -2497,7 +2521,7 @@ def show_payments():
 
         # ── Payment summary ──────────────────────────────────────────
         st.markdown('<p class="info-label">Payment Summary</p>', unsafe_allow_html=True)
-        pc1, pc2, pc3, pc4 = st.columns(4)
+        pc1, pc2, pc3 = st.columns(3)
         with pc1:
             st.markdown(
                 f'<div style="background:#EDF7ED; border-radius:10px; padding:1.1rem 1.4rem;">'
@@ -2525,16 +2549,6 @@ def show_payments():
                 f'letter-spacing:0.05em;">Payment Status</p>'
                 f'<p style="margin:0.3rem 0 0; font-size:1.2rem; font-weight:700; color:#333;">'
                 f'{status if status else "—"}</p>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with pc4:
-            st.markdown(
-                f'<div style="background:#FAFAFA; border:1px solid #E5E7EB; border-radius:10px; padding:1.1rem 1.4rem;">'
-                f'<p style="margin:0; font-size:0.8rem; color:#555; text-transform:uppercase; '
-                f'letter-spacing:0.05em;">Gusto Onboarding</p>'
-                f'<p style="margin:0.3rem 0 0; font-size:1.2rem; font-weight:700; color:#333;">'
-                f'{p["onboarding_status"] if p["onboarding_status"] else "—"}</p>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -2621,7 +2635,7 @@ def show_dashboard():
 
         view = st.radio(
             "Navigation",
-            ["🏢 Company Dashboard", "📁 Your Projects", "👥 Your Interns", "💳 Payments", "📚 Submissions + Resources"],
+            ["🏢 Company Dashboard", "📁 Your Projects", "👥 Your Interns", "📚 Submissions + Resources", "💳 Payments"],
             label_visibility="collapsed",
             key="nav_radio",
         )
@@ -2672,10 +2686,10 @@ def show_dashboard():
         show_projects()
     elif view == "👥 Your Interns":
         show_interns()
-    elif view == "💳 Payments":
-        show_payments()
-    else:
+    elif view == "📚 Submissions + Resources":
         show_resources()
+    else:
+        show_payments()
 
 # ─────────────────────────────────────────────
 # MAIN
