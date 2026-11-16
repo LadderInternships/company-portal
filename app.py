@@ -5,6 +5,13 @@ import resend
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import re
 import os
+import base64
+from concurrent.futures import ThreadPoolExecutor
+try:
+    from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+except ImportError:  # very old Streamlit: run without passing the script context
+    add_script_run_ctx = lambda thread=None, ctx=None: thread
+    get_script_run_ctx = lambda: None
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -40,6 +47,31 @@ def get_tables():
             or "tbl6fI0oqCiZv2Ez8"
         ),
     }
+
+@st.cache_resource
+def _image_data_uri(path):
+    """Read an image once per server process and return it as a data: URI."""
+    with open(path, "rb") as fh:
+        return "data:image/png;base64," + base64.b64encode(fh.read()).decode()
+
+def _run_parallel(*calls):
+    """Run zero-argument callables in parallel threads and return their results in order.
+
+    Used to overlap slow Airtable requests. Each thread gets the current Streamlit
+    script context so st.cache_data and st.error keep working inside it.
+    """
+    ctx = get_script_run_ctx()
+
+    def _wrap(fn):
+        def _inner():
+            import threading
+            add_script_run_ctx(threading.current_thread(), ctx)
+            return fn()
+        return _inner
+
+    with ThreadPoolExecutor(max_workers=max(1, len(calls))) as pool:
+        futures = [pool.submit(_wrap(fn)) for fn in calls]
+        return [f.result() for f in futures]
 
 # ─────────────────────────────────────────────
 # MAGIC LINK AUTH
@@ -521,10 +553,21 @@ def get_company_by_email(email):
         safe = email.replace("'", "\\'")
         # Airtable narrows the candidates; the exact match is checked below so
         # "an@x.com" doesn't match "van@x.com"
-        candidates = tables["companies"].all(
-            formula=(f"OR(FIND('{safe}', LOWER({{Supervisor Email}})) > 0, "
-                     f"FIND('{safe}', LOWER({{POC Email}})) > 0)")
+        formula = (f"OR(FIND('{safe}', LOWER({{Supervisor Email}})) > 0, "
+                   f"FIND('{safe}', LOWER({{POC Email}})) > 0)")
+        # Raw values (used for project/student lookup formulas) and display
+        # values (resolved linked-field names, e.g. Company Industry) are
+        # fetched at the same time
+        candidates, candidates_display = _run_parallel(
+            lambda: tables["companies"].all(formula=formula),
+            lambda: tables["companies"].all(
+                formula=formula,
+                cell_format="string",
+                user_locale="en-us",
+                time_zone="America/New_York",
+            ),
         )
+        display_by_id = {c["id"]: c["fields"] for c in candidates_display}
 
         def _role(c):
             fields = c["fields"]
@@ -540,16 +583,7 @@ def get_company_by_email(email):
             r = records[0]
             login_role = _role(r)
             f = r["fields"]
-            # Second fetch with cell_format="string" to resolve linked field
-            # display names (e.g. Company Industry) without affecting the raw
-            # field values used for project/student lookup formulas.
-            r_display = tables["companies"].get(
-                r["id"],
-                cell_format="string",
-                user_locale="en-us",
-                time_zone="America/New_York",
-            )
-            f_display = r_display["fields"]
+            f_display = display_by_id.get(r["id"], {})
 
             def _get_ci(fields, name):
                 """Look up a field by name, ignoring capitalisation."""
@@ -613,7 +647,14 @@ def get_meeting_submissions():
     """
     tables = get_tables()
     try:
-        records = tables["submissions"].all()
+        try:
+            # Only download the two columns we need (much faster on a big table)
+            records = tables["submissions"].all(
+                fields=[SUBMISSION_FIELDS["project"], SUBMISSION_FIELDS["meeting_number"]]
+            )
+        except Exception:
+            # e.g. a field name differs in capitalisation — fall back to all fields
+            records = tables["submissions"].all()
     except Exception as e:
         # Missing table/permissions shouldn't break the portal; trackers fall back to checkboxes
         print(f"Could not load company submissions: {e}")
@@ -655,11 +696,15 @@ def get_projects_for_company(company_name):
         safe = company_name.replace("'", "\\'")
         # cell_format="string" makes Airtable return linked record fields
         # as their display names instead of raw record IDs.
-        records = tables["projects"].all(
-            formula=f"FIND('{safe}', {{Unique Record ID_Company Projects}}) > 0",
-            cell_format="string",
-            user_locale="en-us",
-            time_zone="America/New_York",
+        # Projects and meeting submissions are independent requests — fetch together
+        records, submissions = _run_parallel(
+            lambda: tables["projects"].all(
+                formula=f"FIND('{safe}', {{Unique Record ID_Company Projects}}) > 0",
+                cell_format="string",
+                user_locale="en-us",
+                time_zone="America/New_York",
+            ),
+            get_meeting_submissions,
         )
         def _is_checked(val):
             """Handle checkbox values whether pyairtable returns bool or string."""
@@ -669,7 +714,7 @@ def get_projects_for_company(company_name):
                 return False
             return str(val).strip().lower() == "true"
 
-        meetings_held = get_meeting_submissions()["by_key"]
+        meetings_held = submissions["by_key"]
 
         def _name_key(rec):
             return str(rec["fields"].get(PROJECT_FIELDS["name"], "") or "").strip().lower()
@@ -769,14 +814,17 @@ def get_students_for_company(company_name):
     try:
         safe = company_name.replace("'", "\\'")
         formula = f"FIND('{safe}', {{Student ID}}) > 0"
-        # Raw fetch: keeps project_assigned as record IDs for project matching
-        records = tables["students"].all(formula=formula)
-        # String fetch: resolves linked field display names (e.g. Program Type)
-        records_str = tables["students"].all(
-            formula=formula,
-            cell_format="string",
-            user_locale="en-us",
-            time_zone="America/New_York",
+        # Raw fetch keeps project_assigned as record IDs for project matching;
+        # string fetch resolves linked field display names (e.g. Program Type).
+        # Both run at the same time.
+        records, records_str = _run_parallel(
+            lambda: tables["students"].all(formula=formula),
+            lambda: tables["students"].all(
+                formula=formula,
+                cell_format="string",
+                user_locale="en-us",
+                time_zone="America/New_York",
+            ),
         )
         str_by_id = {r["id"]: r["fields"] for r in records_str}
         students = []
@@ -819,14 +867,16 @@ def get_payments_for_company(company_name):
     try:
         safe = company_name.replace("'", "\\'")
         formula = f"FIND('{safe}', ARRAYJOIN({{Company}})) > 0"
-        # Raw fetch: preserves linked record IDs (e.g. project record IDs)
-        records_raw = tables["payments"].all(formula=formula)
-        # String fetch: resolves display names for linked/lookup fields
-        records_str = tables["payments"].all(
-            formula=formula,
-            cell_format="string",
-            user_locale="en-us",
-            time_zone="America/New_York",
+        # Raw fetch preserves linked record IDs (e.g. project record IDs);
+        # string fetch resolves display names for linked/lookup fields. Run together.
+        records_raw, records_str = _run_parallel(
+            lambda: tables["payments"].all(formula=formula),
+            lambda: tables["payments"].all(
+                formula=formula,
+                cell_format="string",
+                user_locale="en-us",
+                time_zone="America/New_York",
+            ),
         )
         str_by_id = {r["id"]: r["fields"] for r in records_str}
         payments = []
@@ -1049,9 +1099,7 @@ def show_login_page():
     _, col2, _ = st.columns([1, 2, 1])
     with col2, st.container(key="login_card"):
         st.markdown(
-            '<div class="login-logo"><img src="data:image/png;base64,{}" width="240"></div>'.format(
-                __import__('base64').b64encode(open('assets/ladder_logo.png', 'rb').read()).decode()
-            ),
+            f'<div class="login-logo"><img src="{_image_data_uri("assets/ladder_logo_web.png")}" width="240"></div>',
             unsafe_allow_html=True
         )
         st.markdown('<p class="login-title">Company Portal</p>', unsafe_allow_html=True)
@@ -2402,7 +2450,7 @@ def show_payments():
         return
 
     # Build project lookup: record ID → project dict
-    all_projects = get_projects_for_company(st.session_state.company_name)
+    all_projects = get_projects_for_company(_get_company_unique_id())
     project_by_id = {proj["id"]: proj for proj in all_projects}
 
     def _int_display(val):
@@ -2503,7 +2551,26 @@ def show_payments():
 # ─────────────────────────────────────────────
 # DASHBOARD SHELL
 # ─────────────────────────────────────────────
+def _prefetch_company_data():
+    """Load this company's Airtable data in parallel so every page opens quickly.
+
+    Results land in st.cache_data, so the pages below read them instantly.
+    Already-cached data returns immediately, so this is cheap on later clicks.
+    """
+    uid     = _get_company_unique_id()
+    email   = st.session_state.supervisor_email
+    company = st.session_state.company_name
+    if not uid:
+        return
+    _run_parallel(
+        lambda: get_company_by_email(email),
+        lambda: get_projects_for_company(uid),
+        lambda: get_students_for_company(uid),
+        lambda: get_payments_for_company(company),
+    )
+
 def show_dashboard():
+    _prefetch_company_data()
     # Handle nav query param for in-page hyperlinks
     nav_map = {
         "projects":  "📁 Your Projects",
@@ -2540,9 +2607,8 @@ def show_dashboard():
 
     with st.sidebar:
         st.markdown(
-        '<img src="data:image/png;base64,{}" width="55" style="filter: brightness(0) invert(1); margin-bottom: 0.5rem;">'.format(
-            __import__('base64').b64encode(open('assets/ladder_logo_symbol.png','rb').read()).decode()
-        ),
+        f'<img src="{_image_data_uri("assets/ladder_logo_symbol_web.png")}" width="55" '
+        'style="filter: brightness(0) invert(1); margin-bottom: 0.5rem;">',
         unsafe_allow_html=True
     )
         st.markdown(f"### {st.session_state.company_name}")
