@@ -305,6 +305,36 @@ STUDENT_FIELDS = {
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
+    /* Centred loading spinner while the app is working (loading data, switching
+       pages). Appears after a short delay so quick clicks don't flicker. */
+    .stApp[data-test-script-state="running"]::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.45);
+        z-index: 999998;
+        opacity: 0;
+        pointer-events: none;
+        animation: ladder-fade-in 0.2s ease 0.35s forwards;
+    }
+    .stApp[data-test-script-state="running"]::after {
+        content: "";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 48px;
+        height: 48px;
+        margin: -24px 0 0 -24px;
+        border: 4px solid #E2E8F0;
+        border-top-color: #1B2B5E;
+        border-radius: 50%;
+        z-index: 999999;
+        opacity: 0;
+        pointer-events: none;
+        animation: ladder-fade-in 0.2s ease 0.35s forwards, ladder-spin 0.8s linear infinite;
+    }
+    @keyframes ladder-spin { to { transform: rotate(360deg); } }
+    @keyframes ladder-fade-in { to { opacity: 1; } }
     /* Hide the link icon Streamlit adds next to headings */
     [data-testid="stHeaderActionElements"] { display: none !important; }
     .main-header {
