@@ -2204,7 +2204,9 @@ def show_interns():
 
     # ── Render ────────────────────────────────────────────────────────
 
-    if selected_cohort == "All Cohorts" and len(cohorts_sorted) > 1:
+    # The status sections (Active / Tentative / Upcoming / Inactive) are used
+    # whenever all cohorts are shown — including companies with just one cohort
+    if selected_cohort == "All Cohorts":
         # Group students by cohort
         cohort_map: dict = {}
         for s in filtered:
