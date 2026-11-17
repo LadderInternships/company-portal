@@ -2212,21 +2212,23 @@ def show_interns():
                     if groups.get(cohort_name):
                         _render_cohort_section(cohort_name, groups[cohort_name], key_prefix)
 
-        for status in ("Active", "Upcoming", "Inactive"):
-            cohort_list = status_cohort_map[status]
-            if not cohort_list:
-                continue
-            if status == "Active":
-                # Active cohorts are split: confirmed interns under ACTIVE,
-                # tentative interns in their own TENTATIVE section
-                confirmed = {c: [s for s in cohort_map.get(c, []) if not _is_tentative(s)] for c in cohort_list}
-                tentative = {c: [s for s in cohort_map.get(c, []) if _is_tentative(s)] for c in cohort_list}
-                _render_status_section(f"{EMOJI['Active']}  ACTIVE", cohort_list, confirmed,
-                                       expanded=True, marker_cls=MARKER_CLASS["Active"])
-                _render_status_section("🟡  TENTATIVE", cohort_list, tentative, key_prefix="tentative_")
-            else:
-                _render_status_section(f"{EMOJI[status]}  {status.upper()}", cohort_list, cohort_map,
-                                       marker_cls=MARKER_CLASS[status])
+        # Active and upcoming cohorts are split by status: tentative interns from
+        # both go into one TENTATIVE list; the rest stay under ACTIVE / UPCOMING
+        def _split(cohorts, want_tentative):
+            return {c: [s for s in cohort_map.get(c, []) if _is_tentative(s) == want_tentative] for c in cohorts}
+
+        active_cohorts   = status_cohort_map["Active"]
+        upcoming_cohorts = status_cohort_map["Upcoming"]
+
+        _render_status_section(f"{EMOJI['Active']}  ACTIVE", active_cohorts, _split(active_cohorts, False),
+                               expanded=True, marker_cls=MARKER_CLASS["Active"])
+        tentative_cohorts = active_cohorts + upcoming_cohorts
+        _render_status_section("🟡  TENTATIVE", tentative_cohorts, _split(tentative_cohorts, True),
+                               key_prefix="tentative_")
+        _render_status_section(f"{EMOJI['Upcoming']}  UPCOMING", upcoming_cohorts, _split(upcoming_cohorts, False),
+                               marker_cls=MARKER_CLASS["Upcoming"])
+        _render_status_section(f"{EMOJI['Inactive']}  INACTIVE", status_cohort_map["Inactive"], cohort_map,
+                               marker_cls=MARKER_CLASS["Inactive"])
 
     else:
         # Specific cohort selected — show header then project sub-groups
