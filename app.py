@@ -2658,9 +2658,12 @@ def show_dashboard():
         st.session_state.selected_project_id = qp_project
     if qp_intern and st.session_state.get("selected_intern_id") != qp_intern:
         st.session_state.selected_intern_id = qp_intern
-    # Force sidebar to Your Interns tab when an intern ID is in the URL
-    if qp_intern:
-        st.session_state["nav_radio"] = "👥 Your Interns"
+    # When an intern ID newly appears in the URL (a shared link or the browser's
+    # back/forward button), open the tab that shows it. Only do this when the URL
+    # changes — otherwise it would override the user clicking a different tab.
+    if qp_intern and qp_intern != st.session_state.get("_last_qp_intern"):
+        st.session_state["nav_radio"] = "📁 Your Projects" if qp_project else "👥 Your Interns"
+    st.session_state["_last_qp_intern"] = qp_intern
 
     with st.sidebar:
         st.markdown(
