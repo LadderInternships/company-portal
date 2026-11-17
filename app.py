@@ -1600,6 +1600,12 @@ def show_projects():
         unsafe_allow_html=True
     )
 
+    # Projects without a cohort aren't listed
+    projects = [p for p in projects if p.get("cohort")]
+    if not projects:
+        st.info("No projects assigned yet.")
+        return
+
     # Build cohort list sorted by start date ascending (closest first)
     cohort_date_map: dict = {}
     for p in projects:
@@ -1742,47 +1748,50 @@ def show_projects():
 
         st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
 
+        def _launch_date(cohort_projects):
+            for p in cohort_projects:
+                raw = p.get("cohort_start_date", "")
+                if raw:
+                    return _format_launch_date(raw)
+            return "TBD"
+
+        # Active and upcoming cohorts are shown open first; every other cohort
+        # follows at the end as a collapsed dropdown
+        open_cohorts, collapsed_cohorts = [], []
         for cohort_name in sorted_cohorts:
             cohort_projects = cohort_map[cohort_name]
             if not cohort_projects:
                 continue
-
-            display_name = cohort_name if cohort_name else "No Cohort"
-
-            launch_date = "TBD"
-            for p in cohort_projects:
-                raw = p.get("cohort_start_date", "")
-                if raw:
-                    launch_date = _format_launch_date(raw)
-                    break
-
-            # Active and upcoming cohorts are shown open; past cohorts (and
-            # projects with no cohort) are collapsed until toggled
             is_active   = any(p.get("is_cohort_active") for p in cohort_projects)
-            start       = _cohort_sort_key(cohort_name)[1] if cohort_name else datetime.min
-            is_upcoming = start > datetime.now()
+            is_upcoming = _cohort_sort_key(cohort_name)[1] > datetime.now()
+            (open_cohorts if is_active or is_upcoming else collapsed_cohorts).append(cohort_name)
 
-            if is_active or is_upcoming:
-                st.markdown(
-                    f'<div style="margin:2rem 0 0.25rem 0;">'
-                    f'<h3 style="margin:0;color:#1B2B5E;">{display_name}</h3>'
-                    f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
-                    f'Expected Launch Date: {launch_date}</p>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
-                    unsafe_allow_html=True,
-                )
+        for cohort_name in open_cohorts:
+            cohort_projects = cohort_map[cohort_name]
+            st.markdown(
+                f'<div style="margin:2rem 0 0.25rem 0;">'
+                f'<h3 style="margin:0;color:#1B2B5E;">{cohort_name}</h3>'
+                f'<p style="margin:0.25rem 0 0;font-size:0.85rem;color:#6B7280;">'
+                f'Expected Launch Date: {_launch_date(cohort_projects)}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                '<hr style="margin:0.75rem 0 1rem 0;border:none;border-top:2px solid #E5E7EB;">',
+                unsafe_allow_html=True,
+            )
+            for project in cohort_projects:
+                _render_project_card(project)
+
+        if collapsed_cohorts:
+            st.markdown('<div style="margin-top:2rem;"></div>', unsafe_allow_html=True)
+        for cohort_name in collapsed_cohorts:
+            cohort_projects = cohort_map[cohort_name]
+            n = len(cohort_projects)
+            with st.expander(f"{cohort_name}  ·  {n} project{'s' if n != 1 else ''}"):
+                st.caption(f"Launch Date: {_launch_date(cohort_projects)}")
                 for project in cohort_projects:
                     _render_project_card(project)
-            else:
-                n = len(cohort_projects)
-                with st.expander(f"{display_name}  ·  {n} project{'s' if n != 1 else ''}"):
-                    st.caption(f"Launch Date: {launch_date}")
-                    for project in cohort_projects:
-                        _render_project_card(project)
     else:
         st.markdown(f"**{len(projects)}** project{'s' if len(projects) != 1 else ''}")
 
